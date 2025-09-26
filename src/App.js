@@ -196,48 +196,7 @@ const App = () => {
     }
   };
 
-  const generateAnalysisPrompt = () => {
-    const userData = Object.entries(categories)
-      .filter(([key, items]) => items.length > 0)
-      .map(([category, items]) => ({
-        category: categoryConfig[category].title,
-        items: items.map((item, index) => ({
-          text: item.text,
-          rank: index + 1
-        }))
-      }));
 
-    const lifeGoals = categories.lifeGoals.map(goal => goal.text).join('; ');
-    
-    return `
-      Analyze this person's breakthrough data with the perspective of ${roleSliders.therapist}% therapist, ${roleSliders.financialAdvisor}% financial advisor, ${roleSliders.businessMentor}% business mentor, and ${roleSliders.father}% father figure.
-
-      User Profile:
-      - Name: ${userProfile.name}
-      - Age: ${userProfile.age}
-      - Location: ${userProfile.location}
-      - Life Goals: ${lifeGoals}
-
-      User Data:
-      ${userData.map(cat => 
-        `${cat.category}:\n${cat.items.map(item => `${item.rank}. ${item.text}`).join('\n')}`
-      ).join('\n\n')}
-
-      Role Weightings:
-      - Therapist (${roleSliders.therapist}%): Focus on emotions, relationships, stress, well-being
-      - Financial Advisor (${roleSliders.financialAdvisor}%): Focus on financial decisions, investments, money strategy  
-      - Business Mentor (${roleSliders.businessMentor}%): Focus on career, leadership, professional growth
-      - Father Figure (${roleSliders.father}%): Focus on wisdom, values, life guidance
-
-      Please provide:
-      1. **Key Blockers**: Triangulate the 1-3 main things blocking their success
-      2. **Role-Based Insights**: Perspective from each role weighted by their slider values
-      3. **Goal-Aligned Action Plan**: Specific steps toward their life goals
-      4. **Integration Strategy**: How to address blockers while moving toward their aspirations
-
-      Keep it personal, actionable, and focused on their stated life goals.
-    `;
-  };
 
   const generateFallbackAnalysis = () => {
     const topItems = {};
