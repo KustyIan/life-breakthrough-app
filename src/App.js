@@ -273,6 +273,11 @@ const App = () => {
     return Object.values(categories).reduce((total, items) => total + items.length, 0);
   };
 
+  const loadDefaultData = () => {
+    setCategories(defaultCategories);
+    localStorage.removeItem('breakthroughAppData');
+  };
+
   const clearAllData = () => {
     if (window.confirm('Are you sure you want to clear all data? This cannot be undone.')) {
       setCategories({
@@ -748,6 +753,12 @@ Keep it personal, actionable, and focused on their stated life goals. Be direct 
           </div>
           
           <div className="flex gap-3">
+            <button 
+              onClick={loadDefaultData}
+              className="px-6 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors font-medium"
+            >
+              Load Demo Data
+            </button>
             {getTotalItems() > 0 && (
               <button 
                 onClick={clearAllData}
