@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, GripVertical, Trash2, MessageCircle, ArrowLeft, RotateCcw, User, MapPin, Calendar } from 'lucide-react';
 
 const App = () => {
@@ -14,19 +14,101 @@ const App = () => {
     businessMentor: 25,
     father: 25
   });
+
+  // Pre-loaded data
   const [categories, setCategories] = useState({
-    avoiding: [],
-    fears: [],
-    lessons: [],
-    facts: [],
+    avoiding: [
+      { id: 1, text: "Taxes" },
+      { id: 2, text: "Dentist" },
+      { id: 3, text: "Learning new things" },
+      { id: 4, text: "Dealing with focus issues" },
+      { id: 5, text: "Blood work" },
+      { id: 6, text: "Seeing my father and Sisters" },
+      { id: 7, text: "Family in general" },
+      { id: 8, text: "Building or joining a community" },
+      { id: 9, text: "Deciding on where to live" },
+      { id: 10, text: "Deciding on when/if to buy mountain house" }
+    ],
+    fears: [
+      { id: 11, text: "I am unlovable - not worthy of love" },
+      { id: 12, text: "I will die soon" },
+      { id: 13, text: "I will lose my kids" },
+      { id: 14, text: "I will not be able to afford a life I want" },
+      { id: 15, text: "I am not special" },
+      { id: 16, text: "I am not smart" },
+      { id: 17, text: "I will get in trouble" },
+      { id: 18, text: "I will never be able to focus" },
+      { id: 19, text: "I will never be happy" },
+      { id: 20, text: "I am living a lie" },
+      { id: 21, text: "I have no one to blame and I deserve this life" },
+      { id: 22, text: "The market doesnt need me" },
+      { id: 23, text: "I add no value" },
+      { id: 24, text: "I am ugly" },
+      { id: 25, text: "Decisions will be made for me if I dont make them soon" },
+      { id: 26, text: "Competing" },
+      { id: 27, text: "Being creative" },
+      { id: 28, text: "I have to stay busy" },
+      { id: 29, text: "Hill sprints" }
+    ],
+    lessons: [
+      { id: 30, text: "Meditation and writing is grounding" },
+      { id: 31, text: "Sauna /Ice bath 2-3x a week feels good" },
+      { id: 32, text: "Working out in am is hard but good" },
+      { id: 33, text: "I cant have a partner or live with someone or join families" },
+      { id: 34, text: "Tech doesnt excite me" },
+      { id: 35, text: "I wouldnt want my kids to do the work I do" },
+      { id: 36, text: "I still have time to: win, succeed, reinvent, learn, teach, grow, repair" },
+      { id: 37, text: "I can be me - there is an authentic me" },
+      { id: 38, text: "I can set boundaries and express my needs" },
+      { id: 39, text: "Communicating well is hard work" },
+      { id: 40, text: "I can manage my anxiety" }
+    ],
+    facts: [
+      { id: 41, text: "$60k debt" },
+      { id: 42, text: "$800k in assets" },
+      { id: 43, text: "Twins have 6 more years in Briar Chapel" },
+      { id: 44, text: "Isaiah will need a home near Briar Chapel for 2 more years" },
+      { id: 45, text: "Judah will need a home near Briar Chapel for 2 more years" },
+      { id: 46, text: "I currently need to make 250k to break even with current expenses and lifestyle" }
+    ],
     decisions: [],
-    lifeGoals: []
+    lifeGoals: [
+      { id: 47, text: "To be a part of a community that is open, honest, uplifting, accountable, artistic and outdoorsy/ athletic" },
+      { id: 48, text: "House and Land I can build on or around, remodel" },
+      { id: 49, text: "To be close to my kids" },
+      { id: 50, text: "To know that kids are prepared for their lives" },
+      { id: 51, text: "To be financially stable" },
+      { id: 52, text: "To have a low pressure intimiate partner" }
+    ]
   });
+
   const [newItemText, setNewItemText] = useState('');
   const [activeCategory, setActiveCategory] = useState('avoiding');
   const [draggedItem, setDraggedItem] = useState(null);
   const [analysis, setAnalysis] = useState('');
   const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
+
+  // Local storage for data persistence
+  useEffect(() => {
+    const savedData = localStorage.getItem('breakthroughAppData');
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      if (parsed.userProfile) setUserProfile(parsed.userProfile);
+      if (parsed.roleSliders) setRoleSliders(parsed.roleSliders);
+      if (parsed.categories) setCategories(parsed.categories);
+      if (parsed.currentStep) setCurrentStep(parsed.currentStep);
+    }
+  }, []);
+
+  useEffect(() => {
+    const dataToSave = {
+      userProfile,
+      roleSliders,
+      categories,
+      currentStep
+    };
+    localStorage.setItem('breakthroughAppData', JSON.stringify(dataToSave));
+  }, [userProfile, roleSliders, categories, currentStep]);
 
   const categoryConfig = {
     avoiding: {
@@ -191,14 +273,15 @@ const App = () => {
         decisions: [],
         lifeGoals: []
       });
+      setUserProfile({ name: '', age: '', location: '' });
       setCurrentStep('setup');
       setActiveCategory('avoiding');
+      localStorage.removeItem('breakthroughAppData');
     }
   };
 
-
-
-  const generateFallbackAnalysis = () => {
+  const generateRoleBasedAnalysis = () => {
+    const lifeGoals = categories.lifeGoals.map(goal => goal.text).join('; ');
     const topItems = {};
     Object.entries(categories).forEach(([key, items]) => {
       if (items.length > 0) {
@@ -208,9 +291,10 @@ const App = () => {
 
     const analysis = [];
     
-    analysis.push(`# Breakthrough Analysis for ${userProfile.name}`);
+    analysis.push(`# ${userProfile.name}'s Multi-Perspective Breakthrough Analysis`);
     analysis.push("");
     
+    // Life Goals Section
     if (categories.lifeGoals.length > 0) {
       analysis.push("## Your Life Vision");
       categories.lifeGoals.forEach((goal, index) => {
@@ -219,25 +303,76 @@ const App = () => {
       analysis.push("");
     }
 
-    analysis.push("## Key Blockers Identified");
+    // Key Blockers Analysis
+    analysis.push("## 🎯 Key Blockers Identified");
+    const keyBlockers = [];
+    
     if (topItems.avoiding && topItems.fears) {
-      analysis.push(`Your fear of "${topItems.fears}" is directly connected to avoiding "${topItems.avoiding}". This creates a cycle that prevents progress.`);
+      keyBlockers.push(`**Fear-Avoidance Cycle**: "${topItems.fears}" is driving avoidance of "${topItems.avoiding}"`);
     }
+    
+    if (topItems.lessons && topItems.avoiding) {
+      keyBlockers.push(`**Knowledge-Action Gap**: You know "${topItems.lessons}" but still avoid "${topItems.avoiding}"`);
+    }
+
+    if (topItems.facts && topItems.lifeGoals) {
+      keyBlockers.push(`**Reality-Dream Tension**: "${topItems.facts}" vs desired "${topItems.lifeGoals}"`);
+    }
+
+    keyBlockers.forEach(blocker => analysis.push(blocker));
     analysis.push("");
 
-    analysis.push("## Multi-Role Perspective");
-    if (roleSliders.therapist > 20) {
-      analysis.push(`**Therapist View**: Your emotional patterns around "${topItems.fears || 'fear'}" need attention for breakthrough.`);
+    // Role-Based Perspectives
+    analysis.push("## 👥 Multi-Role Advisory Perspective");
+    analysis.push("");
+
+    if (roleSliders.therapist > 15) {
+      analysis.push(`### 🧠 Therapist Perspective (${roleSliders.therapist}%)`);
+      analysis.push(`The fear "${topItems.fears || 'of unworthiness'}" creates emotional barriers. Your lesson "${topItems.lessons || 'about authenticity'}" shows growth capacity. Focus on self-compassion and challenging negative self-talk.`);
+      analysis.push("");
     }
-    if (roleSliders.financialAdvisor > 20) {
-      analysis.push(`**Financial Advisor**: Consider the financial implications of "${topItems.decisions || 'your decisions'}".`);
+
+    if (roleSliders.financialAdvisor > 15) {
+      analysis.push(`### 💰 Financial Advisor Perspective (${roleSliders.financialAdvisor}%)`);
+      analysis.push(`With $800k assets and $60k debt, you have strong net worth but high income needs ($250k). Priority: address "${topItems.avoiding || 'financial planning'}" to align income with lifestyle goals.`);
+      analysis.push("");
     }
-    if (roleSliders.businessMentor > 20) {
-      analysis.push(`**Business Mentor**: Professional growth requires addressing "${topItems.avoiding || 'avoidance patterns'}".`);
+
+    if (roleSliders.businessMentor > 15) {
+      analysis.push(`### 💼 Business Mentor Perspective (${roleSliders.businessMentor}%)`);
+      analysis.push(`"${topItems.lessons || 'Tech doesn\'t excite you'}" signals need for career pivot. Your avoidance of "${topItems.avoiding || 'learning new things'}" limits growth. Time to explore what truly energizes you professionally.`);
+      analysis.push("");
     }
-    if (roleSliders.father > 20) {
-      analysis.push(`**Father Figure**: Sometimes the hardest path forward is the right one. Time to face "${topItems.avoiding || 'what you\'ve been avoiding'}".`);
+
+    if (roleSliders.father > 15) {
+      analysis.push(`### 👨‍👧‍👦 Father Figure Perspective (${roleSliders.father}%)`);
+      analysis.push(`Your kids need 6 more years near Briar Chapel - this is your anchor. Stop avoiding "${topItems.avoiding || 'family'}" and start building the community you want them to see. Model the authenticity you've learned.`);
+      analysis.push("");
     }
+
+    // Goal-Aligned Action Plan
+    analysis.push("## 🎯 Goal-Aligned Action Plan");
+    analysis.push("");
+    
+    if (lifeGoals.includes("community")) {
+      analysis.push("**Community Building**: Start with one local group - hiking, art, or athletic club. Your kids will benefit from seeing you engaged.");
+    }
+    
+    if (lifeGoals.includes("financially stable")) {
+      analysis.push("**Financial Stability**: Address the $250k income need through career transition planning while leveraging your $800k assets.");
+    }
+    
+    if (lifeGoals.includes("close to my kids")) {
+      analysis.push("**Family Connection**: Use the 6-year Briar Chapel timeline to deepen relationships rather than avoid family dynamics.");
+    }
+
+    analysis.push("");
+    analysis.push("## 🔄 Integration Strategy");
+    analysis.push("");
+    analysis.push("1. **Start Small**: Pick one avoided item and take one tiny step this week");
+    analysis.push("2. **Leverage Strengths**: Use your meditation/writing practice for clarity on decisions");
+    analysis.push("3. **Timeline Awareness**: Let your kids' needs guide location and community choices");
+    analysis.push("4. **Authenticity Over Perfection**: You know 'you can be you' - lead with that truth");
 
     return analysis.join('\n');
   };
@@ -246,8 +381,7 @@ const App = () => {
     setIsGeneratingAnalysis(true);
     setCurrentStep('analysis');
     
-    // For now, use fallback analysis (can integrate AI later)
-    const result = generateFallbackAnalysis();
+    const result = generateRoleBasedAnalysis();
     setAnalysis(result);
     setIsGeneratingAnalysis(false);
   };
