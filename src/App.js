@@ -15,8 +15,8 @@ const App = () => {
     father: 25
   });
 
-  // Pre-loaded data
-  const [categories, setCategories] = useState({
+  // Pre-loaded data - this will be the default data
+  const defaultCategories = {
     avoiding: [
       { id: 1, text: "Taxes" },
       { id: 2, text: "Dentist" },
@@ -80,7 +80,9 @@ const App = () => {
       { id: 51, text: "To be financially stable" },
       { id: 52, text: "To have a low pressure intimiate partner" }
     ]
-  });
+  };
+
+  const [categories, setCategories] = useState(defaultCategories);
 
   const [newItemText, setNewItemText] = useState('');
   const [activeCategory, setActiveCategory] = useState('avoiding');
@@ -88,15 +90,23 @@ const App = () => {
   const [analysis, setAnalysis] = useState('');
   const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
 
-  // Local storage for data persistence
+  // Local storage for data persistence - but prioritize default data first
   useEffect(() => {
     const savedData = localStorage.getItem('breakthroughAppData');
     if (savedData) {
       const parsed = JSON.parse(savedData);
-      if (parsed.userProfile) setUserProfile(parsed.userProfile);
+      if (parsed.userProfile && (parsed.userProfile.name || parsed.userProfile.age)) {
+        setUserProfile(parsed.userProfile);
+      }
       if (parsed.roleSliders) setRoleSliders(parsed.roleSliders);
-      if (parsed.categories) setCategories(parsed.categories);
-      if (parsed.currentStep) setCurrentStep(parsed.currentStep);
+      if (parsed.currentStep && parsed.userProfile && parsed.userProfile.name) {
+        setCurrentStep(parsed.currentStep);
+      }
+      // Only load saved categories if they have actual content and user has been through setup
+      if (parsed.categories && parsed.userProfile && parsed.userProfile.name && 
+          Object.values(parsed.categories).some(cat => cat.length > 0)) {
+        setCategories(parsed.categories);
+      }
     }
   }, []);
 
