@@ -280,7 +280,67 @@ const App = () => {
     }
   };
 
-  const generateRoleBasedAnalysis = () => {
+  const generateAIAnalysis = async () => {
+    const userData = Object.entries(categories)
+      .filter(([key, items]) => items.length > 0)
+      .map(([category, items]) => ({
+        category: categoryConfig[category].title,
+        items: items.map((item, index) => ({
+          text: item.text,
+          rank: index + 1
+        }))
+      }));
+
+    const lifeGoals = categories.lifeGoals.map(goal => goal.text).join('; ');
+    
+    const prompt = `You are an expert life coach analyzing breakthrough data. Provide personalized insights with ${roleSliders.therapist}% therapist perspective, ${roleSliders.financialAdvisor}% financial advisor perspective, ${roleSliders.businessMentor}% business mentor perspective, and ${roleSliders.father}% father figure perspective.
+
+User Profile:
+- Name: ${userProfile.name}
+- Age: ${userProfile.age}
+- Location: ${userProfile.location}
+- Life Goals: ${lifeGoals}
+
+Ranked Data by Priority:
+${userData.map(cat => 
+  `${cat.category}:\n${cat.items.map(item => `${item.rank}. ${item.text}`).join('\n')}`
+).join('\n\n')}
+
+Please provide:
+1. **Key Blockers**: Identify the 1-3 main things blocking success
+2. **Role-Based Insights**: Weighted perspective from each role
+3. **Goal-Aligned Action Plan**: Specific steps toward their life goals
+4. **Integration Strategy**: How to address blockers while moving toward aspirations
+
+Keep it personal, actionable, and focused on their stated life goals. Be direct but supportive.`;
+
+    try {
+      // Note: This is a placeholder for the API call
+      // In production, this would go through a backend to protect the API key
+      const response = await fetch('/api/openai-analysis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          prompt: prompt,
+          userProfile: userProfile,
+          roleWeights: roleSliders
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('API request failed');
+      }
+
+      const result = await response.json();
+      return result.analysis;
+    } catch (error) {
+      console.error('AI Analysis failed, using fallback:', error);
+      return generateFallbackAnalysis();
+    }
+  };
+  const generateFallbackAnalysis = () => {
     const lifeGoals = categories.lifeGoals.map(goal => goal.text).join('; ');
     const topItems = {};
     Object.entries(categories).forEach(([key, items]) => {
@@ -304,7 +364,7 @@ const App = () => {
     }
 
     // Key Blockers Analysis
-    analysis.push("## 🎯 Key Blockers Identified");
+    analysis.push("## Key Blockers Identified");
     const keyBlockers = [];
     
     if (topItems.avoiding && topItems.fears) {
@@ -323,35 +383,35 @@ const App = () => {
     analysis.push("");
 
     // Role-Based Perspectives
-    analysis.push("## 👥 Multi-Role Advisory Perspective");
+    analysis.push("## Multi-Role Advisory Perspective");
     analysis.push("");
 
     if (roleSliders.therapist > 15) {
-      analysis.push(`### 🧠 Therapist Perspective (${roleSliders.therapist}%)`);
+      analysis.push(`### Therapist Perspective (${roleSliders.therapist}%)`);
       analysis.push(`The fear "${topItems.fears || 'of unworthiness'}" creates emotional barriers. Your lesson "${topItems.lessons || 'about authenticity'}" shows growth capacity. Focus on self-compassion and challenging negative self-talk.`);
       analysis.push("");
     }
 
     if (roleSliders.financialAdvisor > 15) {
-      analysis.push(`### 💰 Financial Advisor Perspective (${roleSliders.financialAdvisor}%)`);
+      analysis.push(`### Financial Advisor Perspective (${roleSliders.financialAdvisor}%)`);
       analysis.push(`With $800k assets and $60k debt, you have strong net worth but high income needs ($250k). Priority: address "${topItems.avoiding || 'financial planning'}" to align income with lifestyle goals.`);
       analysis.push("");
     }
 
     if (roleSliders.businessMentor > 15) {
-      analysis.push(`### 💼 Business Mentor Perspective (${roleSliders.businessMentor}%)`);
+      analysis.push(`### Business Mentor Perspective (${roleSliders.businessMentor}%)`);
       analysis.push(`"${topItems.lessons || 'Tech doesn\'t excite you'}" signals need for career pivot. Your avoidance of "${topItems.avoiding || 'learning new things'}" limits growth. Time to explore what truly energizes you professionally.`);
       analysis.push("");
     }
 
     if (roleSliders.father > 15) {
-      analysis.push(`### 👨‍👧‍👦 Father Figure Perspective (${roleSliders.father}%)`);
+      analysis.push(`### Father Figure Perspective (${roleSliders.father}%)`);
       analysis.push(`Your kids need 6 more years near Briar Chapel - this is your anchor. Stop avoiding "${topItems.avoiding || 'family'}" and start building the community you want them to see. Model the authenticity you've learned.`);
       analysis.push("");
     }
 
     // Goal-Aligned Action Plan
-    analysis.push("## 🎯 Goal-Aligned Action Plan");
+    analysis.push("## Goal-Aligned Action Plan");
     analysis.push("");
     
     if (lifeGoals.includes("community")) {
@@ -367,7 +427,7 @@ const App = () => {
     }
 
     analysis.push("");
-    analysis.push("## 🔄 Integration Strategy");
+    analysis.push("## Integration Strategy");
     analysis.push("");
     analysis.push("1. **Start Small**: Pick one avoided item and take one tiny step this week");
     analysis.push("2. **Leverage Strengths**: Use your meditation/writing practice for clarity on decisions");
@@ -381,9 +441,16 @@ const App = () => {
     setIsGeneratingAnalysis(true);
     setCurrentStep('analysis');
     
-    const result = generateRoleBasedAnalysis();
-    setAnalysis(result);
-    setIsGeneratingAnalysis(false);
+    try {
+      const result = await generateAIAnalysis();
+      setAnalysis(result);
+    } catch (error) {
+      console.error('Analysis generation failed:', error);
+      const fallback = generateFallbackAnalysis();
+      setAnalysis(fallback);
+    } finally {
+      setIsGeneratingAnalysis(false);
+    }
   };
 
   // Setup Screen
