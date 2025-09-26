@@ -308,52 +308,179 @@ const App = () => {
 
     const lifeGoals = categories.lifeGoals.map(goal => goal.text).join('; ');
     
-    const prompt = `You are an expert life coach analyzing breakthrough data. Provide personalized insights with ${roleSliders.therapist}% therapist perspective, ${roleSliders.financialAdvisor}% financial advisor perspective, ${roleSliders.businessMentor}% business mentor perspective, and ${roleSliders.father}% father figure perspective.
+    const prompt = `You are an expert life coach and breakthrough specialist. Analyze this person's data with deep psychological insight and provide transformative guidance.
 
-User Profile:
+ROLE WEIGHTINGS: Apply ${roleSliders.therapist}% therapist perspective, ${roleSliders.financialAdvisor}% financial advisor perspective, ${roleSliders.businessMentor}% business mentor perspective, and ${roleSliders.father}% father figure perspective.
+
+USER PROFILE:
 - Name: ${userProfile.name}
-- Age: ${userProfile.age}
+- Age: ${userProfile.age} 
 - Location: ${userProfile.location}
-- Life Goals: ${lifeGoals}
+- Life Vision: ${lifeGoals}
 
-Ranked Data by Priority:
+PRIORITIZED DATA (ranked by importance):
 ${userData.map(cat => 
-  `${cat.category}:\n${cat.items.map(item => `${item.rank}. ${item.text}`).join('\n')}`
+  `${cat.category}:\n${cat.items.map(item => `  ${item.rank}. ${item.text}`).join('\n')}`
 ).join('\n\n')}
 
-Please provide:
-1. **Key Blockers**: Identify the 1-3 main things blocking success
-2. **Role-Based Insights**: Weighted perspective from each role
-3. **Goal-Aligned Action Plan**: Specific steps toward their life goals
-4. **Integration Strategy**: How to address blockers while moving toward aspirations
+ANALYSIS FRAMEWORK:
+Apply sophisticated psychological and strategic thinking. Look for:
+- Unconscious patterns and self-sabotage cycles
+- Protective mechanisms that no longer serve
+- Integration opportunities between conflicting parts
+- Leverage points for maximum transformation
+- Systemic family and financial dynamics
 
-Keep it personal, actionable, and focused on their stated life goals. Be direct but supportive.`;
+REQUIRED OUTPUT FORMAT:
+# ${userProfile.name}'s Breakthrough Analysis
+
+## Core Transformation Blockers
+Identify 2-3 root psychological/systemic issues creating the stuck pattern.
+
+## Multi-Perspective Deep Dive
+### [Most weighted role] Perspective ([percentage]%)
+[Detailed analysis from this role's expertise]
+
+### [Second most weighted role] Perspective ([percentage]%)
+[Detailed analysis from this role's expertise]
+
+[Continue for all roles with >15% weighting]
+
+## Integration Strategy
+How the different perspectives combine into a unified approach.
+
+## Breakthrough Action Plan
+3-5 specific, concrete steps that honor both the person's psychology and practical constraints.
+
+## Timeline & Milestones
+Given the 6-year Briar Chapel timeline, what should happen when.
+
+TONE: Be direct, insightful, and transformative. Challenge limiting beliefs while honoring real constraints. This person is ready for breakthrough-level insights.`;
 
     try {
-      // Note: This is a placeholder for the API call
-      // In production, this would go through a backend to protect the API key
-      const response = await fetch('/api/openai-analysis', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          prompt: prompt,
-          userProfile: userProfile,
-          roleWeights: roleSliders
-        })
-      });
+      // Multiple AI provider options
+      const aiProviders = [
+        { name: 'openai', endpoint: '/api/openai-analysis' },
+        { name: 'claude', endpoint: '/api/claude-analysis' }, 
+        { name: 'local', endpoint: '/api/local-ai-analysis' }
+      ];
 
-      if (!response.ok) {
-        throw new Error('API request failed');
+      let result = null;
+      
+      for (const provider of aiProviders) {
+        try {
+          const response = await fetch(provider.endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              prompt: prompt,
+              userProfile: userProfile,
+              roleWeights: roleSliders,
+              userData: userData
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            result = data.analysis;
+            break; // Success - exit loop
+          }
+        } catch (providerError) {
+          console.log(`${provider.name} provider failed, trying next...`);
+          continue;
+        }
       }
 
-      const result = await response.json();
-      return result.analysis;
+      if (result) {
+        return result;
+      } else {
+        throw new Error('All AI providers failed');
+      }
+
     } catch (error) {
-      console.error('AI Analysis failed, using fallback:', error);
-      return generateFallbackAnalysis();
+      console.error('AI Analysis failed, using enhanced fallback:', error);
+      return generateEnhancedFallback();
     }
+  };
+
+  const generateEnhancedFallback = () => {
+    const topItems = {};
+    Object.entries(categories).forEach(([key, items]) => {
+      if (items.length > 0) {
+        topItems[key] = items[0].text;
+      }
+    });
+
+    const analysis = [];
+    
+    analysis.push(`# ${userProfile.name}'s Breakthrough Analysis`);
+    analysis.push("");
+    analysis.push("*AI analysis temporarily unavailable - using enhanced pattern analysis*");
+    analysis.push("");
+
+    // Enhanced pattern recognition
+    const psychologicalPatterns = [];
+    
+    if (topItems.fears && topItems.fears.includes("unlovable")) {
+      psychologicalPatterns.push("**Attachment wound**: Core fear of unworthiness driving protective behaviors");
+    }
+    
+    if (topItems.avoiding && topItems.avoiding.includes("family")) {
+      psychologicalPatterns.push("**Relational avoidance**: Isolating from connection to avoid perceived rejection");
+    }
+    
+    if (topItems.lessons && topItems.lessons.includes("authentic")) {
+      psychologicalPatterns.push("**Emerging authenticity**: Growing capacity for genuine self-expression");
+    }
+
+    analysis.push("## Core Transformation Blockers");
+    psychologicalPatterns.forEach(pattern => analysis.push(pattern));
+    analysis.push("");
+
+    // Role-based analysis with psychological depth
+    const sortedRoles = Object.entries(roleSliders)
+      .sort(([,a], [,b]) => b - a)
+      .filter(([,weight]) => weight > 15);
+
+    analysis.push("## Multi-Perspective Deep Dive");
+    analysis.push("");
+
+    sortedRoles.forEach(([role, weight]) => {
+      analysis.push(`### ${roleConfig[role].name} Perspective (${weight}%)`);
+      
+      switch(role) {
+        case 'therapist':
+          analysis.push(`The fear "${topItems.fears}" appears to be a trauma response protecting against vulnerability. Your learning that "${topItems.lessons}" suggests healing capacity. The avoidance of "${topItems.avoiding}" may be maintaining the wound. Integration work needed between the scared part and the authentic part.`);
+          break;
+        case 'financialAdvisor':
+          analysis.push(`Your financial reality ($800k assets, $60k debt, $250k income need) creates pressure that may be triggering scarcity fears. The avoidance of "${topItems.avoiding}" could be costing you financially. Need strategic income planning that honors your values about meaningful work.`);
+          break;
+        case 'businessMentor':
+          analysis.push(`Your realization that "${topItems.lessons}" signals a career identity crisis. The fear "${topItems.fears}" may be keeping you in unfulfilling work. Time for values-based career design that integrates your authentic self with financial needs.`);
+          break;
+        case 'father':
+          analysis.push(`Your children are watching how you handle fear and authenticity. The 6-year Briar Chapel timeline is precious - use it to model courage in facing "${topItems.avoiding}". Your breakthrough will be their blueprint for handling challenges.`);
+          break;
+      }
+      analysis.push("");
+    });
+
+    analysis.push("## Integration Strategy");
+    analysis.push("1. **Trauma-informed goal setting** - Honor protective parts while moving toward growth");
+    analysis.push("2. **Values-driven decisions** - Filter choices through what you've learned about authenticity"); 
+    analysis.push("3. **Systemic thinking** - Consider impact on family system and financial ecosystem");
+    analysis.push("");
+
+    analysis.push("## Breakthrough Action Plan");
+    analysis.push("1. **Address core wound**: Work with therapist on attachment/worthiness healing");
+    analysis.push("2. **Strategic patience**: Use 6-year timeline for gradual, sustainable changes");
+    analysis.push("3. **Community building**: Start small with one authentic connection to break isolation");
+    analysis.push("4. **Career exploration**: Research income-generating work aligned with values");
+    analysis.push("5. **Financial optimization**: Leverage assets while reducing lifestyle pressure");
+
+    return analysis.join('\n');
   };
   const generateFallbackAnalysis = () => {
     const lifeGoals = categories.lifeGoals.map(goal => goal.text).join('; ');
