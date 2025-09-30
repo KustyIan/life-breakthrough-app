@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, GripVertical, Trash2, MessageCircle, ArrowLeft, RotateCcw, User, MapPin, Calendar, Send, Sparkles } from 'lucide-react';
+import { Plus, GripVertical, Trash2, MessageCircle, ArrowLeft, User, MapPin, Calendar, Send } from 'lucide-react';
 
 const App = () => {
   const [currentStep, setCurrentStep] = useState('setup');
@@ -191,7 +191,6 @@ const App = () => {
   // Constrained slider handler - ensures all sliders sum to 100%
   const handleSliderChange = (changedRole, newValue) => {
     const currentTotal = Object.values(roleSliders).reduce((sum, val) => sum + val, 0);
-    const difference = newValue - roleSliders[changedRole];
     
     // Calculate how much to adjust other sliders
     const otherRoles = Object.keys(roleSliders).filter(role => role !== changedRole);
@@ -562,15 +561,15 @@ As the ${roleConfig[activeAdvisor].name}, ask 1-2 clarifying questions to unders
 
   // Conversation Screen
   if (currentStep === 'conversation') {
-    const advisor = roleConfig[activeAdvisor];
+    const advisorConfig = roleConfig[activeAdvisor];
     
     return (
       <div className="max-w-4xl mx-auto p-6 bg-white min-h-screen flex flex-col">
-        <div className={`${advisor.color} text-white p-6 rounded-lg mb-6`}>
+        <div className={`${advisorConfig.color} text-white p-6 rounded-lg mb-6`}>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold mb-2">Conversation with {advisor.name}</h1>
-              <p className="opacity-90">{advisor.focus}</p>
+              <h1 className="text-2xl font-bold mb-2">Conversation with {advisorConfig.name}</h1>
+              <p className="opacity-90">{advisorConfig.focus}</p>
             </div>
             <button
               onClick={() => setCurrentStep('input')}
@@ -588,10 +587,10 @@ As the ${roleConfig[activeAdvisor].name}, ask 1-2 clarifying questions to unders
               <div className={`max-w-[70%] p-4 rounded-lg ${
                 msg.role === 'user' 
                   ? 'bg-blue-600 text-white' 
-                  : `${advisor.color} text-white`
+                  : `${advisorConfig.color} text-white`
               }`}>
                 {msg.role === 'advisor' && (
-                  <div className="text-xs opacity-75 mb-1">{advisor.name}</div>
+                  <div className="text-xs opacity-75 mb-1">{advisorConfig.name}</div>
                 )}
                 <p className="text-sm leading-relaxed">{msg.message}</p>
               </div>
@@ -600,7 +599,7 @@ As the ${roleConfig[activeAdvisor].name}, ask 1-2 clarifying questions to unders
           
           {isAIResponding && (
             <div className="flex justify-start">
-              <div className={`max-w-[70%] p-4 rounded-lg ${advisor.color} text-white`}>
+              <div className={`max-w-[70%] p-4 rounded-lg ${advisorConfig.color} text-white`}>
                 <div className="flex gap-1">
                   <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                   <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
