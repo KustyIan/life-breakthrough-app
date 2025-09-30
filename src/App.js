@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, GripVertical, Trash2, MessageCircle, ArrowLeft, RotateCcw, User, MapPin, Calendar } from 'lucide-react';
+import { Plus, GripVertical, Trash2, MessageCircle, ArrowLeft, RotateCcw, User, MapPin, Calendar, Send, Sparkles } from 'lucide-react';
 
 const App = () => {
   const [currentStep, setCurrentStep] = useState('setup');
@@ -15,7 +15,7 @@ const App = () => {
     father: 25
   });
 
-  // Pre-loaded data - this will be the default data
+  // Pre-loaded data
   const defaultCategories = {
     avoiding: [
       { id: 1, text: "Taxes" },
@@ -83,14 +83,15 @@ const App = () => {
   };
 
   const [categories, setCategories] = useState(defaultCategories);
-
   const [newItemText, setNewItemText] = useState('');
-  const [activeCategory, setActiveCategory] = useState('avoiding');
+  const [activeCategory, setActiveCategory] = useState('lifeGoals');
   const [draggedItem, setDraggedItem] = useState(null);
-  const [analysis, setAnalysis] = useState('');
-  const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const [currentMessage, setCurrentMessage] = useState('');
+  const [isAIResponding, setIsAIResponding] = useState(false);
+  const [activeAdvisor, setActiveAdvisor] = useState(null);
 
-  // Local storage for data persistence - but prioritize default data first
+  // Local storage for data persistence
   useEffect(() => {
     const savedData = localStorage.getItem('breakthroughAppData');
     if (savedData) {
@@ -102,11 +103,11 @@ const App = () => {
       if (parsed.currentStep && parsed.userProfile && parsed.userProfile.name) {
         setCurrentStep(parsed.currentStep);
       }
-      // Only load saved categories if they have actual content and user has been through setup
       if (parsed.categories && parsed.userProfile && parsed.userProfile.name && 
           Object.values(parsed.categories).some(cat => cat.length > 0)) {
         setCategories(parsed.categories);
       }
+      if (parsed.conversationHistory) setConversationHistory(parsed.conversationHistory);
     }
   }, []);
 
@@ -115,41 +116,48 @@ const App = () => {
       userProfile,
       roleSliders,
       categories,
-      currentStep
+      currentStep,
+      conversationHistory
     };
     localStorage.setItem('breakthroughAppData', JSON.stringify(dataToSave));
-  }, [userProfile, roleSliders, categories, currentStep]);
+  }, [userProfile, roleSliders, categories, currentStep, conversationHistory]);
 
   const categoryConfig = {
+    lifeGoals: {
+      title: "What do you want out of this life?",
+      placeholder: "e.g., Build a business that gives me freedom and helps others",
+      description: "Your aspirations, dreams, and what success means to you",
+      priority: 1
+    },
     avoiding: {
       title: "What are you avoiding?",
       placeholder: "e.g., Having a difficult conversation with my boss",
-      description: "Things you're putting off, situations you're not facing"
+      description: "Things blocking your path to your life goals",
+      priority: 2
     },
     fears: {
       title: "What are your fears?",
       placeholder: "e.g., Fear of financial instability",
-      description: "Specific worries, anxieties, or concerns holding you back"
+      description: "What's holding you back from your vision",
+      priority: 3
     },
     lessons: {
       title: "What did you learn last year?",
       placeholder: "e.g., I need to set better boundaries",
-      description: "Growth, insights, lessons from recent experiences"
+      description: "Resources you can use to reach your goals",
+      priority: 4
     },
     facts: {
       title: "Facts and Responsibilities",
       placeholder: "e.g., I have 2 kids, I need to earn $80k annually",
-      description: "Non-negotiable realities in your life"
+      description: "Realities that shape your path forward",
+      priority: 5
     },
     decisions: {
       title: "Decisions I need to make",
       placeholder: "e.g., Whether to change careers",
-      description: "Specific choices or crossroads you're facing"
-    },
-    lifeGoals: {
-      title: "What do you want out of this life?",
-      placeholder: "e.g., Build a business that gives me freedom and helps others",
-      description: "Your aspirations, dreams, and what success means to you"
+      description: "Choices that will move you toward your goals",
+      priority: 6
     }
   };
 
@@ -157,26 +165,66 @@ const App = () => {
     therapist: {
       name: "Therapist",
       description: "Emotional wellness & relationships",
-      color: "bg-purple-500"
+      color: "bg-purple-500",
+      focus: "Understanding your emotional patterns and relational dynamics to support your life vision"
     },
     financialAdvisor: {
       name: "Financial Advisor", 
       description: "Money & financial strategy",
-      color: "bg-green-500"
+      color: "bg-green-500",
+      focus: "Creating financial stability and abundance to enable your desired lifestyle"
     },
     businessMentor: {
       name: "Business Mentor",
       description: "Career & professional growth", 
-      color: "bg-blue-500"
+      color: "bg-blue-500",
+      focus: "Building a career path that aligns with your authentic self and life goals"
     },
     father: {
       name: "Father Figure",
       description: "Wisdom & life guidance",
-      color: "bg-orange-500"
+      color: "bg-orange-500",
+      focus: "Providing perspective, tough love, and wisdom to help you become who you want to be"
     }
   };
 
-  // Calculate smart defaults based on user profile
+  // Constrained slider handler - ensures all sliders sum to 100%
+  const handleSliderChange = (changedRole, newValue) => {
+    const currentTotal = Object.values(roleSliders).reduce((sum, val) => sum + val, 0);
+    const difference = newValue - roleSliders[changedRole];
+    
+    // Calculate how much to adjust other sliders
+    const otherRoles = Object.keys(roleSliders).filter(role => role !== changedRole);
+    const otherTotal = currentTotal - roleSliders[changedRole];
+    
+    const newSliders = { ...roleSliders, [changedRole]: newValue };
+    
+    // Distribute the difference proportionally across other sliders
+    if (otherTotal > 0) {
+      const remainingPercentage = 100 - newValue;
+      otherRoles.forEach(role => {
+        const proportion = roleSliders[role] / otherTotal;
+        newSliders[role] = Math.max(0, Math.round(remainingPercentage * proportion));
+      });
+    } else {
+      // If all others are 0, distribute equally
+      const equalShare = Math.floor((100 - newValue) / otherRoles.length);
+      otherRoles.forEach(role => {
+        newSliders[role] = equalShare;
+      });
+    }
+    
+    // Ensure we're at exactly 100% (handle rounding)
+    const finalTotal = Object.values(newSliders).reduce((sum, val) => sum + val, 0);
+    if (finalTotal !== 100) {
+      const adjustment = 100 - finalTotal;
+      const adjustRole = otherRoles[0];
+      newSliders[adjustRole] = Math.max(0, newSliders[adjustRole] + adjustment);
+    }
+    
+    setRoleSliders(newSliders);
+  };
+
   const calculateDefaultSliders = () => {
     const age = parseInt(userProfile.age) || 25;
     
@@ -290,309 +338,162 @@ const App = () => {
       });
       setUserProfile({ name: '', age: '', location: '' });
       setCurrentStep('setup');
-      setActiveCategory('avoiding');
+      setActiveCategory('lifeGoals');
+      setConversationHistory([]);
       localStorage.removeItem('breakthroughAppData');
     }
   };
 
-  const generateAIAnalysis = async () => {
-    const userData = Object.entries(categories)
-      .filter(([key, items]) => items.length > 0)
-      .map(([category, items]) => ({
-        category: categoryConfig[category].title,
-        items: items.map((item, index) => ({
-          text: item.text,
-          rank: index + 1
-        }))
-      }));
-
-    const lifeGoals = categories.lifeGoals.map(goal => goal.text).join('; ');
+  const startAdvisorConversation = (advisorRole) => {
+    setActiveAdvisor(advisorRole);
+    setCurrentStep('conversation');
     
-    const prompt = `You are an expert life coach and breakthrough specialist. Analyze this person's data with deep psychological insight and provide transformative guidance.
+    // Initial advisor greeting
+    const greeting = generateAdvisorGreeting(advisorRole);
+    setConversationHistory([{
+      role: 'advisor',
+      advisor: advisorRole,
+      message: greeting,
+      timestamp: new Date()
+    }]);
+  };
 
-ROLE WEIGHTINGS: Apply ${roleSliders.therapist}% therapist perspective, ${roleSliders.financialAdvisor}% financial advisor perspective, ${roleSliders.businessMentor}% business mentor perspective, and ${roleSliders.father}% father figure perspective.
+  const generateAdvisorGreeting = (advisorRole) => {
+    const advisor = roleConfig[advisorRole];
+    const topGoal = categories.lifeGoals[0]?.text || "your life goals";
+    
+    const greetings = {
+      therapist: `Hi ${userProfile.name}, I'm here to help you understand the emotional patterns that might be blocking you from "${topGoal}". Let's explore what's really going on beneath the surface. What feels most stuck right now?`,
+      financialAdvisor: `${userProfile.name}, let's talk about the financial side of reaching "${topGoal}". With your $800k in assets and current income needs, I have some questions about your strategy. What's your biggest financial concern right now?`,
+      businessMentor: `Hey ${userProfile.name}, I want to help you build a career that actually serves "${topGoal}". You mentioned tech doesn't excite you anymore - that's important. What kind of work would make you feel alive?`,
+      father: `${userProfile.name}, son, let's get real about "${topGoal}". You've got 6 years with your kids in Briar Chapel - that's your window. What are you most afraid of when it comes to making this vision real?`
+    };
+    
+    return greetings[advisorRole];
+  };
 
-USER PROFILE:
-- Name: ${userProfile.name}
-- Age: ${userProfile.age} 
-- Location: ${userProfile.location}
-- Life Vision: ${lifeGoals}
-
-PRIORITIZED DATA (ranked by importance):
-${userData.map(cat => 
-  `${cat.category}:\n${cat.items.map(item => `  ${item.rank}. ${item.text}`).join('\n')}`
-).join('\n\n')}
-
-ANALYSIS FRAMEWORK:
-Apply sophisticated psychological and strategic thinking. Look for:
-- Unconscious patterns and self-sabotage cycles
-- Protective mechanisms that no longer serve
-- Integration opportunities between conflicting parts
-- Leverage points for maximum transformation
-- Systemic family and financial dynamics
-
-REQUIRED OUTPUT FORMAT:
-# ${userProfile.name}'s Breakthrough Analysis
-
-## Core Transformation Blockers
-Identify 2-3 root psychological/systemic issues creating the stuck pattern.
-
-## Multi-Perspective Deep Dive
-### [Most weighted role] Perspective ([percentage]%)
-[Detailed analysis from this role's expertise]
-
-### [Second most weighted role] Perspective ([percentage]%)
-[Detailed analysis from this role's expertise]
-
-[Continue for all roles with >15% weighting]
-
-## Integration Strategy
-How the different perspectives combine into a unified approach.
-
-## Breakthrough Action Plan
-3-5 specific, concrete steps that honor both the person's psychology and practical constraints.
-
-## Timeline & Milestones
-Given the 6-year Briar Chapel timeline, what should happen when.
-
-TONE: Be direct, insightful, and transformative. Challenge limiting beliefs while honoring real constraints. This person is ready for breakthrough-level insights.`;
-
+  const sendMessage = async () => {
+    if (!currentMessage.trim()) return;
+    
+    // Add user message
+    const userMsg = {
+      role: 'user',
+      message: currentMessage,
+      timestamp: new Date()
+    };
+    
+    setConversationHistory(prev => [...prev, userMsg]);
+    setCurrentMessage('');
+    setIsAIResponding(true);
+    
+    // Generate AI response
     try {
-      // Multiple AI provider options
-      const aiProviders = [
-        { name: 'openai', endpoint: '/api/openai-analysis' },
-        { name: 'claude', endpoint: '/api/claude-analysis' }, 
-        { name: 'local', endpoint: '/api/local-ai-analysis' }
-      ];
-
-      let result = null;
-      
-      for (const provider of aiProviders) {
-        try {
-          const response = await fetch(provider.endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-              prompt: prompt,
-              userProfile: userProfile,
-              roleWeights: roleSliders,
-              userData: userData
-            })
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            result = data.analysis;
-            break; // Success - exit loop
-          }
-        } catch (providerError) {
-          console.log(`${provider.name} provider failed, trying next...`);
-          continue;
-        }
-      }
-
-      if (result) {
-        return result;
-      } else {
-        throw new Error('All AI providers failed');
-      }
-
+      const response = await generateAIResponse(currentMessage);
+      const advisorMsg = {
+        role: 'advisor',
+        advisor: activeAdvisor,
+        message: response,
+        timestamp: new Date()
+      };
+      setConversationHistory(prev => [...prev, advisorMsg]);
     } catch (error) {
-      console.error('AI Analysis failed, using enhanced fallback:', error);
-      return generateEnhancedFallback();
-    }
-  };
-
-  const generateEnhancedFallback = () => {
-    const topItems = {};
-    Object.entries(categories).forEach(([key, items]) => {
-      if (items.length > 0) {
-        topItems[key] = items[0].text;
-      }
-    });
-
-    const analysis = [];
-    
-    analysis.push(`# ${userProfile.name}'s Breakthrough Analysis`);
-    analysis.push("");
-    analysis.push("*AI analysis temporarily unavailable - using enhanced pattern analysis*");
-    analysis.push("");
-
-    // Enhanced pattern recognition
-    const psychologicalPatterns = [];
-    
-    if (topItems.fears && topItems.fears.includes("unlovable")) {
-      psychologicalPatterns.push("**Attachment wound**: Core fear of unworthiness driving protective behaviors");
-    }
-    
-    if (topItems.avoiding && topItems.avoiding.includes("family")) {
-      psychologicalPatterns.push("**Relational avoidance**: Isolating from connection to avoid perceived rejection");
-    }
-    
-    if (topItems.lessons && topItems.lessons.includes("authentic")) {
-      psychologicalPatterns.push("**Emerging authenticity**: Growing capacity for genuine self-expression");
-    }
-
-    analysis.push("## Core Transformation Blockers");
-    psychologicalPatterns.forEach(pattern => analysis.push(pattern));
-    analysis.push("");
-
-    // Role-based analysis with psychological depth
-    const sortedRoles = Object.entries(roleSliders)
-      .sort(([,a], [,b]) => b - a)
-      .filter(([,weight]) => weight > 15);
-
-    analysis.push("## Multi-Perspective Deep Dive");
-    analysis.push("");
-
-    sortedRoles.forEach(([role, weight]) => {
-      analysis.push(`### ${roleConfig[role].name} Perspective (${weight}%)`);
-      
-      switch(role) {
-        case 'therapist':
-          analysis.push(`The fear "${topItems.fears}" appears to be a trauma response protecting against vulnerability. Your learning that "${topItems.lessons}" suggests healing capacity. The avoidance of "${topItems.avoiding}" may be maintaining the wound. Integration work needed between the scared part and the authentic part.`);
-          break;
-        case 'financialAdvisor':
-          analysis.push(`Your financial reality ($800k assets, $60k debt, $250k income need) creates pressure that may be triggering scarcity fears. The avoidance of "${topItems.avoiding}" could be costing you financially. Need strategic income planning that honors your values about meaningful work.`);
-          break;
-        case 'businessMentor':
-          analysis.push(`Your realization that "${topItems.lessons}" signals a career identity crisis. The fear "${topItems.fears}" may be keeping you in unfulfilling work. Time for values-based career design that integrates your authentic self with financial needs.`);
-          break;
-        case 'father':
-          analysis.push(`Your children are watching how you handle fear and authenticity. The 6-year Briar Chapel timeline is precious - use it to model courage in facing "${topItems.avoiding}". Your breakthrough will be their blueprint for handling challenges.`);
-          break;
-      }
-      analysis.push("");
-    });
-
-    analysis.push("## Integration Strategy");
-    analysis.push("1. **Trauma-informed goal setting** - Honor protective parts while moving toward growth");
-    analysis.push("2. **Values-driven decisions** - Filter choices through what you've learned about authenticity"); 
-    analysis.push("3. **Systemic thinking** - Consider impact on family system and financial ecosystem");
-    analysis.push("");
-
-    analysis.push("## Breakthrough Action Plan");
-    analysis.push("1. **Address core wound**: Work with therapist on attachment/worthiness healing");
-    analysis.push("2. **Strategic patience**: Use 6-year timeline for gradual, sustainable changes");
-    analysis.push("3. **Community building**: Start small with one authentic connection to break isolation");
-    analysis.push("4. **Career exploration**: Research income-generating work aligned with values");
-    analysis.push("5. **Financial optimization**: Leverage assets while reducing lifestyle pressure");
-
-    return analysis.join('\n');
-  };
-  const generateFallbackAnalysis = () => {
-    const lifeGoals = categories.lifeGoals.map(goal => goal.text).join('; ');
-    const topItems = {};
-    Object.entries(categories).forEach(([key, items]) => {
-      if (items.length > 0) {
-        topItems[key] = items[0].text;
-      }
-    });
-
-    const analysis = [];
-    
-    analysis.push(`# ${userProfile.name}'s Multi-Perspective Breakthrough Analysis`);
-    analysis.push("");
-    
-    // Life Goals Section
-    if (categories.lifeGoals.length > 0) {
-      analysis.push("## Your Life Vision");
-      categories.lifeGoals.forEach((goal, index) => {
-        analysis.push(`${index + 1}. ${goal.text}`);
-      });
-      analysis.push("");
-    }
-
-    // Key Blockers Analysis
-    analysis.push("## Key Blockers Identified");
-    const keyBlockers = [];
-    
-    if (topItems.avoiding && topItems.fears) {
-      keyBlockers.push(`**Fear-Avoidance Cycle**: "${topItems.fears}" is driving avoidance of "${topItems.avoiding}"`);
-    }
-    
-    if (topItems.lessons && topItems.avoiding) {
-      keyBlockers.push(`**Knowledge-Action Gap**: You know "${topItems.lessons}" but still avoid "${topItems.avoiding}"`);
-    }
-
-    if (topItems.facts && topItems.lifeGoals) {
-      keyBlockers.push(`**Reality-Dream Tension**: "${topItems.facts}" vs desired "${topItems.lifeGoals}"`);
-    }
-
-    keyBlockers.forEach(blocker => analysis.push(blocker));
-    analysis.push("");
-
-    // Role-Based Perspectives
-    analysis.push("## Multi-Role Advisory Perspective");
-    analysis.push("");
-
-    if (roleSliders.therapist > 15) {
-      analysis.push(`### Therapist Perspective (${roleSliders.therapist}%)`);
-      analysis.push(`The fear "${topItems.fears || 'of unworthiness'}" creates emotional barriers. Your lesson "${topItems.lessons || 'about authenticity'}" shows growth capacity. Focus on self-compassion and challenging negative self-talk.`);
-      analysis.push("");
-    }
-
-    if (roleSliders.financialAdvisor > 15) {
-      analysis.push(`### Financial Advisor Perspective (${roleSliders.financialAdvisor}%)`);
-      analysis.push(`With $800k assets and $60k debt, you have strong net worth but high income needs ($250k). Priority: address "${topItems.avoiding || 'financial planning'}" to align income with lifestyle goals.`);
-      analysis.push("");
-    }
-
-    if (roleSliders.businessMentor > 15) {
-      analysis.push(`### Business Mentor Perspective (${roleSliders.businessMentor}%)`);
-      analysis.push(`"${topItems.lessons || 'Tech doesn\'t excite you'}" signals need for career pivot. Your avoidance of "${topItems.avoiding || 'learning new things'}" limits growth. Time to explore what truly energizes you professionally.`);
-      analysis.push("");
-    }
-
-    if (roleSliders.father > 15) {
-      analysis.push(`### Father Figure Perspective (${roleSliders.father}%)`);
-      analysis.push(`Your kids need 6 more years near Briar Chapel - this is your anchor. Stop avoiding "${topItems.avoiding || 'family'}" and start building the community you want them to see. Model the authenticity you've learned.`);
-      analysis.push("");
-    }
-
-    // Goal-Aligned Action Plan
-    analysis.push("## Goal-Aligned Action Plan");
-    analysis.push("");
-    
-    if (lifeGoals.includes("community")) {
-      analysis.push("**Community Building**: Start with one local group - hiking, art, or athletic club. Your kids will benefit from seeing you engaged.");
-    }
-    
-    if (lifeGoals.includes("financially stable")) {
-      analysis.push("**Financial Stability**: Address the $250k income need through career transition planning while leveraging your $800k assets.");
-    }
-    
-    if (lifeGoals.includes("close to my kids")) {
-      analysis.push("**Family Connection**: Use the 6-year Briar Chapel timeline to deepen relationships rather than avoid family dynamics.");
-    }
-
-    analysis.push("");
-    analysis.push("## Integration Strategy");
-    analysis.push("");
-    analysis.push("1. **Start Small**: Pick one avoided item and take one tiny step this week");
-    analysis.push("2. **Leverage Strengths**: Use your meditation/writing practice for clarity on decisions");
-    analysis.push("3. **Timeline Awareness**: Let your kids' needs guide location and community choices");
-    analysis.push("4. **Authenticity Over Perfection**: You know 'you can be you' - lead with that truth");
-
-    return analysis.join('\n');
-  };
-
-  const handleGetAnalysis = async () => {
-    setIsGeneratingAnalysis(true);
-    setCurrentStep('analysis');
-    
-    try {
-      const result = await generateAIAnalysis();
-      setAnalysis(result);
-    } catch (error) {
-      console.error('Analysis generation failed:', error);
-      const fallback = generateFallbackAnalysis();
-      setAnalysis(fallback);
+      console.error('AI response failed:', error);
+      const fallbackMsg = {
+        role: 'advisor',
+        advisor: activeAdvisor,
+        message: "I'm having trouble connecting right now. Can you tell me more about that?",
+        timestamp: new Date()
+      };
+      setConversationHistory(prev => [...prev, fallbackMsg]);
     } finally {
-      setIsGeneratingAnalysis(false);
+      setIsAIResponding(false);
     }
+  };
+
+  const generateAIResponse = async (userMessage) => {
+    // Build context for AI
+    const context = {
+      userProfile,
+      lifeGoals: categories.lifeGoals.map(g => g.text),
+      fears: categories.fears.map(f => f.text),
+      avoiding: categories.avoiding.map(a => a.text),
+      lessons: categories.lessons.map(l => l.text),
+      facts: categories.facts.map(f => f.text),
+      conversationHistory: conversationHistory.map(msg => ({
+        role: msg.role,
+        content: msg.message
+      }))
+    };
+
+    const prompt = `You are a ${roleConfig[activeAdvisor].name} having a one-on-one coaching conversation with ${userProfile.name}.
+
+ROLE FOCUS: ${roleConfig[activeAdvisor].focus}
+
+USER'S LIFE VISION:
+${context.lifeGoals.join('\n')}
+
+CONTEXT:
+- Age: ${userProfile.age}
+- Location: ${userProfile.location}
+- Key fears: ${context.fears.slice(0, 3).join(', ')}
+- Avoiding: ${context.avoiding.slice(0, 3).join(', ')}
+- Recent lessons: ${context.lessons.slice(0, 3).join(', ')}
+- Financial: $800k assets, $60k debt, needs $250k income
+- Family: 6 years left in Briar Chapel with kids
+
+CONVERSATION SO FAR:
+${context.conversationHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n')}
+
+USER JUST SAID: "${userMessage}"
+
+YOUR RESPONSE:
+As the ${roleConfig[activeAdvisor].name}, ask 1-2 clarifying questions to understand their situation better OR provide specific, actionable insight if you have enough information. Be direct, empathetic, and focused on helping them reach their life vision. Keep responses to 2-3 sentences max - this is a conversation, not a lecture.`;
+
+    try {
+      const response = await fetch('/api/openai-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, conversationContext: context })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.analysis;
+      }
+    } catch (error) {
+      console.log('AI endpoint not available, using fallback');
+    }
+
+    // Enhanced fallback responses
+    return generateFallbackResponse(userMessage);
+  };
+
+  const generateFallbackResponse = (userMessage) => {
+    const responses = {
+      therapist: [
+        "That's a lot to carry. What emotion comes up strongest when you think about that?",
+        "I hear you. How long have you felt this way?",
+        "What would it mean if you could move past this fear?"
+      ],
+      financialAdvisor: [
+        "Let's look at the numbers. How much runway do you have with current expenses?",
+        "What income streams have you considered beyond your current work?",
+        "If money wasn't a concern, what would you do differently?"
+      ],
+      businessMentor: [
+        "What skills do you have that you're not fully using right now?",
+        "When was the last time you felt energized by work?",
+        "What would a perfect work week look like for you?"
+      ],
+      father: [
+        "Stop overthinking. What's the first small step you could take today?",
+        "Your kids are watching. What do you want them to learn from how you handle this?",
+        "What would the man you want to become do in this situation?"
+      ]
+    };
+
+    const advisorResponses = responses[activeAdvisor];
+    return advisorResponses[Math.floor(Math.random() * advisorResponses.length)];
   };
 
   // Setup Screen
@@ -601,7 +502,7 @@ TONE: Be direct, insightful, and transformative. Challenge limiting beliefs whil
       <div className="max-w-2xl mx-auto p-6 bg-white min-h-screen">
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-8 rounded-lg mb-8">
           <h1 className="text-3xl font-bold mb-2">Welcome to Your Breakthrough Journey</h1>
-          <p className="text-lg opacity-90">Let's start by getting to know you better</p>
+          <p className="text-lg opacity-90">Let's start by getting to know you</p>
         </div>
 
         <div className="space-y-6">
@@ -652,72 +553,80 @@ TONE: Be direct, insightful, and transformative. Challenge limiting beliefs whil
             disabled={!userProfile.name || !userProfile.age || !userProfile.location}
             className="w-full mt-8 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-lg font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            Continue to Your Breakthrough Tool
+            Start Your Breakthrough Journey
           </button>
         </div>
       </div>
     );
   }
 
-  // Analysis Screen
-  if (currentStep === 'analysis') {
+  // Conversation Screen
+  if (currentStep === 'conversation') {
+    const advisor = roleConfig[activeAdvisor];
+    
     return (
-      <div className="max-w-4xl mx-auto p-6 bg-white min-h-screen">
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-lg mb-8">
-          <h1 className="text-2xl font-bold mb-2">Your Personalized Breakthrough Analysis</h1>
-          <p className="opacity-90">Multi-perspective insights for {userProfile.name}</p>
-        </div>
-
-        {/* Role Sliders Display */}
-        <div className="bg-gray-50 p-6 rounded-lg mb-6">
-          <h3 className="text-lg font-semibold mb-4">Analysis Perspective Balance</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(roleConfig).map(([key, role]) => (
-              <div key={key} className="text-center">
-                <div className={`w-16 h-16 mx-auto rounded-full ${role.color} flex items-center justify-center text-white font-bold text-lg mb-2`}>
-                  {roleSliders[key]}%
-                </div>
-                <p className="text-sm font-medium">{role.name}</p>
-              </div>
-            ))}
+      <div className="max-w-4xl mx-auto p-6 bg-white min-h-screen flex flex-col">
+        <div className={`${advisor.color} text-white p-6 rounded-lg mb-6`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold mb-2">Conversation with {advisor.name}</h1>
+              <p className="opacity-90">{advisor.focus}</p>
+            </div>
+            <button
+              onClick={() => setCurrentStep('input')}
+              className="px-4 py-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-colors"
+            >
+              <ArrowLeft size={20} />
+            </button>
           </div>
         </div>
 
-        <div className="bg-gray-50 p-6 rounded-lg mb-6">
-          {isGeneratingAnalysis ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Analyzing your breakthrough data...</p>
+        {/* Conversation Thread */}
+        <div className="flex-1 overflow-y-auto mb-6 space-y-4 bg-gray-50 p-6 rounded-lg">
+          {conversationHistory.map((msg, index) => (
+            <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[70%] p-4 rounded-lg ${
+                msg.role === 'user' 
+                  ? 'bg-blue-600 text-white' 
+                  : `${advisor.color} text-white`
+              }`}>
+                {msg.role === 'advisor' && (
+                  <div className="text-xs opacity-75 mb-1">{advisor.name}</div>
+                )}
+                <p className="text-sm leading-relaxed">{msg.message}</p>
+              </div>
             </div>
-          ) : (
-            <div className="prose max-w-none">
-              <div className="whitespace-pre-line text-gray-800 leading-relaxed">
-                {analysis}
+          ))}
+          
+          {isAIResponding && (
+            <div className="flex justify-start">
+              <div className={`max-w-[70%] p-4 rounded-lg ${advisor.color} text-white`}>
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-4">
-          <button 
-            onClick={() => setCurrentStep('input')}
-            className="flex items-center gap-2 px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+        {/* Message Input */}
+        <div className="flex gap-3">
+          <input
+            type="text"
+            value={currentMessage}
+            onChange={(e) => setCurrentMessage(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+            placeholder="Type your response..."
+            className="flex-1 p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
+          />
+          <button
+            onClick={sendMessage}
+            disabled={!currentMessage.trim() || isAIResponding}
+            className="px-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
-            <ArrowLeft size={16} />
-            Back to Edit
-          </button>
-          <button 
-            onClick={clearAllData}
-            className="flex items-center gap-2 px-6 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-          >
-            <RotateCcw size={16} />
-            Start Over
-          </button>
-          <button 
-            onClick={() => window.print()}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors no-print"
-          >
-            Print Analysis
+            <Send size={20} />
           </button>
         </div>
       </div>
@@ -727,58 +636,93 @@ TONE: Be direct, insightful, and transformative. Challenge limiting beliefs whil
   // Main Input Screen
   return (
     <div className="max-w-7xl mx-auto p-6 bg-white min-h-screen">
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-lg mb-8">
-        <h1 className="text-3xl font-bold mb-2">Life Breakthrough Tool</h1>
-        <p className="text-lg opacity-90">Welcome back, {userProfile.name}! Let's identify what's keeping you stuck.</p>
+      {/* Hero Section - Life Goals Focused */}
+      <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white p-8 rounded-lg mb-8">
+        <h1 className="text-4xl font-bold mb-4">What Do You Want Out of This Life, {userProfile.name}?</h1>
+        <p className="text-xl opacity-90 mb-6">Everything else is here to help you get there.</p>
+        
+        {categories.lifeGoals.length > 0 && (
+          <div className="bg-white bg-opacity-20 p-6 rounded-lg backdrop-blur-sm">
+            <h3 className="text-lg font-semibold mb-3">Your Vision:</h3>
+            <ul className="space-y-2">
+              {categories.lifeGoals.slice(0, 3).map((goal, index) => (
+                <li key={goal.id} className="flex items-start gap-3">
+                  <span className="text-2xl">{index === 0 ? '🎯' : index === 1 ? '✨' : '🌟'}</span>
+                  <span className="text-lg">{goal.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
-      {/* Role Sliders */}
+      {/* Advisory Team Selection */}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6 mb-6">
-        <h3 className="text-xl font-semibold mb-4">Customize Your Advisory Team</h3>
-        <p className="text-gray-600 mb-6">Adjust the balance of perspectives you want in your analysis:</p>
+        <h3 className="text-2xl font-semibold mb-2">Your Advisory Team</h3>
+        <p className="text-gray-600 mb-6">Each advisor offers unique perspective to help you reach your life goals. Adjust their influence or start a conversation.</p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {Object.entries(roleConfig).map(([key, role]) => (
-            <div key={key} className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="font-medium text-gray-700">{role.name}</label>
-                <span className="text-lg font-bold text-gray-800">{roleSliders[key]}%</span>
+            <div key={key} className="space-y-3 p-4 bg-gray-50 rounded-lg">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-12 h-12 rounded-full ${role.color} flex items-center justify-center text-white font-bold text-lg`}>
+                      {roleSliders[key]}%
+                    </div>
+                    <div>
+                      <label className="font-semibold text-gray-800">{role.name}</label>
+                      <p className="text-xs text-gray-500">{role.description}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">{role.focus}</p>
+                </div>
               </div>
+              
               <input
                 type="range"
                 min="0"
                 max="100"
                 value={roleSliders[key]}
-                onChange={(e) => setRoleSliders(prev => ({ ...prev, [key]: parseInt(e.target.value) }))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                onChange={(e) => handleSliderChange(key, parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
               />
-              <p className="text-sm text-gray-500">{role.description}</p>
+              
+              <button
+                onClick={() => startAdvisorConversation(key)}
+                className={`w-full ${role.color} text-white py-2 px-4 rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2`}
+              >
+                <MessageCircle size={16} />
+                Start Conversation
+              </button>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Category Tabs */}
+      {/* Category Tabs - Reordered by priority */}
       <div className="flex flex-wrap gap-2 mb-6 border-b">
-        {Object.entries(categoryConfig).map(([key, config]) => (
-          <button
-            key={key}
-            onClick={() => setActiveCategory(key)}
-            className={`px-4 py-2 rounded-t-lg transition-colors text-sm ${
-              activeCategory === key 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {config.title} ({categories[key].length})
-          </button>
-        ))}
+        {Object.entries(categoryConfig)
+          .sort(([,a], [,b]) => a.priority - b.priority)
+          .map(([key, config]) => (
+            <button
+              key={key}
+              onClick={() => setActiveCategory(key)}
+              className={`px-4 py-2 rounded-t-lg transition-colors text-sm ${
+                activeCategory === key 
+                  ? key === 'lifeGoals' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {config.title} ({categories[key].length})
+            </button>
+          ))}
       </div>
 
       {/* Main Content Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1">
-          <div className="bg-gray-50 p-6 rounded-lg">
+          <div className={`${activeCategory === 'lifeGoals' ? 'bg-purple-50 border-purple-200' : 'bg-gray-50'} p-6 rounded-lg border-2`}>
             <h2 className="text-xl font-semibold mb-2">
               {categoryConfig[activeCategory].title}
             </h2>
@@ -791,7 +735,7 @@ TONE: Be direct, insightful, and transformative. Challenge limiting beliefs whil
                 value={newItemText}
                 onChange={(e) => setNewItemText(e.target.value)}
                 placeholder={categoryConfig[activeCategory].placeholder}
-                className="w-full p-3 border rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full p-3 border rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 rows="3"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -804,10 +748,10 @@ TONE: Be direct, insightful, and transformative. Challenge limiting beliefs whil
               <button 
                 onClick={addItem}
                 disabled={!newItemText.trim()}
-                className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                className={`w-full flex items-center justify-center gap-2 ${activeCategory === 'lifeGoals' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'} text-white p-3 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors`}
               >
                 <Plus size={16} />
-                Add Item
+                Add {activeCategory === 'lifeGoals' ? 'Life Goal' : 'Item'}
               </button>
             </div>
           </div>
@@ -817,10 +761,10 @@ TONE: Be direct, insightful, and transformative. Challenge limiting beliefs whil
           <div className="bg-white border rounded-lg p-6 drag-zone">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">
-                Rank by Priority (drag to reorder)
+                {activeCategory === 'lifeGoals' ? 'Your Life Vision (Most important at top)' : 'Rank by Priority'}
               </h3>
               <span className="text-sm text-gray-500">
-                Most important at top
+                Drag to reorder
               </span>
             </div>
 
@@ -841,7 +785,9 @@ TONE: Be direct, insightful, and transformative. Challenge limiting beliefs whil
                     onDragEnter={handleDragEnter}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, activeCategory, index)}
-                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border cursor-move hover:bg-gray-100 transition-colors group"
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-move hover:bg-gray-100 transition-colors group ${
+                      activeCategory === 'lifeGoals' ? 'bg-purple-50 border-purple-200' : 'bg-gray-50'
+                    }`}
                   >
                     <div className="flex items-center gap-2 text-gray-400">
                       <span className="text-sm font-medium min-w-[20px]">
@@ -868,14 +814,14 @@ TONE: Be direct, insightful, and transformative. Challenge limiting beliefs whil
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="mt-8 p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg">
+      <div className="mt-8 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-800">
-              Ready for your multi-perspective breakthrough analysis?
+              Ready to work with your advisory team?
             </h3>
             <p className="text-gray-600">
-              You've added {getTotalItems()} items across all categories
+              You've defined {categories.lifeGoals.length} life goals with {getTotalItems() - categories.lifeGoals.length} supporting data points
             </p>
           </div>
           
@@ -894,13 +840,6 @@ TONE: Be direct, insightful, and transformative. Challenge limiting beliefs whil
                 Start Over
               </button>
             )}
-            <button 
-              onClick={handleGetAnalysis}
-              disabled={getTotalItems() === 0}
-              className="px-8 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg hover:from-green-700 hover:to-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all font-medium"
-            >
-              Get My Analysis
-            </button>
           </div>
         </div>
       </div>
