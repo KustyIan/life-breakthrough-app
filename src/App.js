@@ -358,7 +358,7 @@ const App = () => {
   };
 
   const generateAdvisorGreeting = (advisorRole) => {
-    const advisor = roleConfig[advisorRole];
+    const advisorConfig = roleConfig[advisorRole];
     const topGoal = categories.lifeGoals[0]?.text || "your life goals";
     
     const greetings = {
