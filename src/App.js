@@ -559,7 +559,7 @@ As the ${roleConfig[activeAdvisor].name}, ask 1-2 clarifying questions to unders
   }
 
   // Conversation Screen
-  if (currentStep === 'conversation') {
+  if (currentStep === 'conversation' && activeAdvisor && roleConfig[activeAdvisor]) {
     const advisorConfig = roleConfig[activeAdvisor];
     
     return (
