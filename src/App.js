@@ -774,7 +774,9 @@ Ask 1-2 clarifying questions to understand their situation better OR provide spe
             <p className="text-gray-600">You've defined {categories.lifeGoals.length} life goals with {getTotalItems() - categories.lifeGoals.length} supporting data points</p>
           </div>
           <div className="flex gap-3">
-            <button onClick={loadDefaultData} className="px-6 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors font-medium">Load Demo Data</button>
+            {userProfile.name.toLowerCase() === 'ian' && (
+              <button onClick={loadDefaultData} className="px-6 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors font-medium">Load Demo Data</button>
+            )}
             {getTotalItems() > 0 && (
               <button onClick={clearAllData} className="px-6 py-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium">Start Over</button>
             )}
