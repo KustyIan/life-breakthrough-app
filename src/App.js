@@ -105,7 +105,11 @@ const App = () => {
   });
 
   useEffect(() => {
-    const savedData = localStorage.getItem('breakthroughAppData');
+    if (!userProfile.name) return; // Don't load until we have a name
+    
+    const storageKey = `breakthroughAppData_${userProfile.name.toLowerCase().replace(/\s+/g, '_')}`;
+    const savedData = localStorage.getItem(storageKey);
+    
     if (savedData) {
       const parsed = JSON.parse(savedData);
       if (parsed.userProfile && (parsed.userProfile.name || parsed.userProfile.age)) {
@@ -122,9 +126,12 @@ const App = () => {
       if (parsed.conversationHistory) setConversationHistory(parsed.conversationHistory);
       if (parsed.advisorConversations) setAdvisorConversations(parsed.advisorConversations);
     }
-  }, []);
+  }, [userProfile.name]);
 
   useEffect(() => {
+    if (!userProfile.name) return; // Don't save until we have a name
+    
+    const storageKey = `breakthroughAppData_${userProfile.name.toLowerCase().replace(/\s+/g, '_')}`;
     const dataToSave = {
       userProfile,
       roleSliders,
@@ -133,7 +140,7 @@ const App = () => {
       conversationHistory,
       advisorConversations
     };
-    localStorage.setItem('breakthroughAppData', JSON.stringify(dataToSave));
+    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
   }, [userProfile, roleSliders, categories, currentStep, conversationHistory, advisorConversations]);
 
   const categoryConfig = {
