@@ -16,6 +16,13 @@ const App = () => {
   });
 
   const defaultCategories = {
+    nonNegotiables: [
+      { id: 101, text: "My kids come first - no compromise on time with them" },
+      { id: 102, text: "I will not sacrifice my health for work" },
+      { id: 103, text: "Honesty in all relationships - no more living a lie" },
+      { id: 104, text: "Financial decisions must support long-term stability" },
+      { id: 105, text: "I need outdoor/athletic activity - not optional" }
+    ],
     avoiding: [
       { id: 1, text: "Taxes" },
       { id: 2, text: "Dentist" },
@@ -85,10 +92,17 @@ const App = () => {
   const [newItemText, setNewItemText] = useState('');
   const [activeCategory, setActiveCategory] = useState('lifeGoals');
   const [draggedItem, setDraggedItem] = useState(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [conversationHistory, setConversationHistory] = useState([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isAIResponding, setIsAIResponding] = useState(false);
   const [activeAdvisor, setActiveAdvisor] = useState(null);
+  const [advisorConversations, setAdvisorConversations] = useState({
+    therapist: [],
+    financialAdvisor: [],
+    businessMentor: [],
+    father: []
+  });
 
   useEffect(() => {
     const savedData = localStorage.getItem('breakthroughAppData');
@@ -106,6 +120,7 @@ const App = () => {
         setCategories(parsed.categories);
       }
       if (parsed.conversationHistory) setConversationHistory(parsed.conversationHistory);
+      if (parsed.advisorConversations) setAdvisorConversations(parsed.advisorConversations);
     }
   }, []);
 
@@ -115,10 +130,11 @@ const App = () => {
       roleSliders,
       categories,
       currentStep,
-      conversationHistory
+      conversationHistory,
+      advisorConversations
     };
     localStorage.setItem('breakthroughAppData', JSON.stringify(dataToSave));
-  }, [userProfile, roleSliders, categories, currentStep, conversationHistory]);
+  }, [userProfile, roleSliders, categories, currentStep, conversationHistory, advisorConversations]);
 
   const categoryConfig = {
     lifeGoals: {
@@ -127,35 +143,41 @@ const App = () => {
       description: "Your aspirations, dreams, and what success means to you",
       priority: 1
     },
+    nonNegotiables: {
+      title: "What are your non-negotiables?",
+      placeholder: "e.g., My kids always come first, I will not compromise my integrity",
+      description: "Firm boundaries and commitments that guide your path to your life vision",
+      priority: 2
+    },
     avoiding: {
       title: "What are you avoiding?",
       placeholder: "e.g., Having a difficult conversation with my boss",
       description: "Things blocking your path to your life goals",
-      priority: 2
+      priority: 3
     },
     fears: {
       title: "What are your fears?",
       placeholder: "e.g., Fear of financial instability",
       description: "What's holding you back from your vision",
-      priority: 3
+      priority: 4
     },
     lessons: {
       title: "What did you learn last year?",
       placeholder: "e.g., I need to set better boundaries",
       description: "Resources you can use to reach your goals",
-      priority: 4
+      priority: 5
     },
     facts: {
       title: "Facts and Responsibilities",
       placeholder: "e.g., I have 2 kids, I need to earn $80k annually",
       description: "Realities that shape your path forward",
-      priority: 5
+      priority: 6
     },
     decisions: {
       title: "Decisions I need to make",
       placeholder: "e.g., Whether to change careers",
       description: "Choices that will move you toward your goals",
-      priority: 6
+      priority: 7
     }
   };
 
@@ -246,41 +268,35 @@ const App = () => {
   const handleDragStart = (e, categoryKey, itemIndex) => {
     setDraggedItem({ categoryKey, itemIndex });
     e.dataTransfer.effectAllowed = 'move';
-    e.target.classList.add('dragging');
   };
 
   const handleDragEnd = (e) => {
-    e.target.classList.remove('dragging');
     setDraggedItem(null);
+    setDropTargetIndex(null);
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e, targetIndex) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDragEnter = (e) => {
-    e.preventDefault();
-    e.target.closest('.drag-zone')?.classList.add('drag-over');
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    if (!e.currentTarget.contains(e.relatedTarget)) {
-      e.target.closest('.drag-zone')?.classList.remove('drag-over');
+    if (draggedItem && targetIndex !== draggedItem.itemIndex) {
+      setDropTargetIndex(targetIndex);
     }
   };
 
-  const handleDrop = (e, categoryKey, dropIndex) => {
+  const handleDrop = (e, categoryKey, targetIndex) => {
     e.preventDefault();
-    e.target.closest('.drag-zone')?.classList.remove('drag-over');
+    setDropTargetIndex(null);
+    
     if (!draggedItem || draggedItem.categoryKey !== categoryKey) return;
+    if (draggedItem.itemIndex === targetIndex) return;
     
     const items = [...categories[categoryKey]];
-    const draggedItemData = items[draggedItem.itemIndex];
-    items.splice(draggedItem.itemIndex, 1);
-    const adjustedDropIndex = draggedItem.itemIndex < dropIndex ? dropIndex - 1 : dropIndex;
-    items.splice(adjustedDropIndex, 0, draggedItemData);
+    const [movedItem] = items.splice(draggedItem.itemIndex, 1);
+    
+    // Adjust target index if dragging down
+    const newIndex = draggedItem.itemIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    items.splice(newIndex, 0, movedItem);
+    
     setCategories(prev => ({ ...prev, [categoryKey]: items }));
     setDraggedItem(null);
   };
@@ -308,8 +324,16 @@ const App = () => {
   const startAdvisorConversation = (advisorRole) => {
     setActiveAdvisor(advisorRole);
     setCurrentStep('conversation');
-    const greeting = generateAdvisorGreeting(advisorRole);
-    setConversationHistory([{ role: 'advisor', advisor: advisorRole, message: greeting, timestamp: new Date() }]);
+    
+    // Load existing conversation for this advisor or start fresh
+    if (advisorConversations[advisorRole].length > 0) {
+      setConversationHistory(advisorConversations[advisorRole]);
+    } else {
+      const greeting = generateAdvisorGreeting(advisorRole);
+      const initialHistory = [{ role: 'advisor', advisor: advisorRole, message: greeting, timestamp: new Date() }];
+      setConversationHistory(initialHistory);
+      setAdvisorConversations(prev => ({ ...prev, [advisorRole]: initialHistory }));
+    }
   };
 
   const generateAdvisorGreeting = (advisorRole) => {
@@ -326,20 +350,119 @@ const App = () => {
   const sendMessage = async () => {
     if (!currentMessage.trim()) return;
     const userMsg = { role: 'user', message: currentMessage, timestamp: new Date() };
-    setConversationHistory(prev => [...prev, userMsg]);
+    const updatedHistory = [...conversationHistory, userMsg];
+    setConversationHistory(updatedHistory);
     setCurrentMessage('');
     setIsAIResponding(true);
     
     try {
       const response = await generateAIResponse(currentMessage);
       const advisorMsg = { role: 'advisor', advisor: activeAdvisor, message: response, timestamp: new Date() };
-      setConversationHistory(prev => [...prev, advisorMsg]);
+      const finalHistory = [...updatedHistory, advisorMsg];
+      setConversationHistory(finalHistory);
+      // Save to this advisor's conversation history
+      setAdvisorConversations(prev => ({ ...prev, [activeAdvisor]: finalHistory }));
     } catch (error) {
       console.error('AI response failed:', error);
       const fallbackMsg = { role: 'advisor', advisor: activeAdvisor, message: "I'm having trouble connecting right now. Can you tell me more about that?", timestamp: new Date() };
-      setConversationHistory(prev => [...prev, fallbackMsg]);
+      const finalHistory = [...updatedHistory, fallbackMsg];
+      setConversationHistory(finalHistory);
+      setAdvisorConversations(prev => ({ ...prev, [activeAdvisor]: finalHistory }));
     } finally {
       setIsAIResponding(false);
+    }
+  };
+
+  const triggerIntegrationSession = async () => {
+    if (!currentMessage.trim()) return;
+    const userMsg = { role: 'user', message: currentMessage, timestamp: new Date() };
+    const updatedHistory = [...conversationHistory, userMsg];
+    setConversationHistory(updatedHistory);
+    setCurrentMessage('');
+    setIsAIResponding(true);
+
+    try {
+      const response = await generateIntegrationResponse(currentMessage);
+      const integrationMsg = { 
+        role: 'integration', 
+        message: response, 
+        timestamp: new Date() 
+      };
+      const finalHistory = [...updatedHistory, integrationMsg];
+      setConversationHistory(finalHistory);
+      setAdvisorConversations(prev => ({ ...prev, [activeAdvisor]: finalHistory }));
+    } catch (error) {
+      console.error('Integration session failed:', error);
+      const fallbackMsg = { role: 'advisor', advisor: activeAdvisor, message: "I'm having trouble connecting the team right now. Let me respond individually for now.", timestamp: new Date() };
+      const finalHistory = [...updatedHistory, fallbackMsg];
+      setConversationHistory(finalHistory);
+      setAdvisorConversations(prev => ({ ...prev, [activeAdvisor]: finalHistory }));
+    } finally {
+      setIsAIResponding(false);
+    }
+  };
+
+  const generateIntegrationResponse = async (userMessage) => {
+    console.log('=== INTEGRATION SESSION ===');
+    
+    // Gather all advisor conversation summaries
+    const advisorSummaries = Object.entries(advisorConversations)
+      .filter(([key, history]) => history.length > 1)
+      .map(([advisorKey, history]) => {
+        const recentMessages = history.slice(-6); // Last 3 exchanges
+        return `${roleConfig[advisorKey].name}:\n${recentMessages.map(msg => `- ${msg.message.substring(0, 150)}...`).join('\n')}`;
+      })
+      .join('\n\n');
+
+    const integrationPrompt = `You are facilitating an INTEGRATION SESSION where all 4 advisors collaborate on ${userProfile.name}'s question.
+
+USER'S PRIMARY LIFE GOAL: ${categories.lifeGoals[0]?.text || 'Not yet defined'}
+
+NON-NEGOTIABLES (Firm boundaries - must be respected in all advice):
+${categories.nonNegotiables.map(n => n.text).join('\n') || 'None specified yet.'}
+
+RECENT CONVERSATIONS WITH EACH ADVISOR:
+${advisorSummaries || 'No previous conversations yet.'}
+
+USER'S CURRENT QUESTION: "${userMessage}"
+
+YOUR TASK:
+Simulate all 4 advisors (Therapist, Financial Advisor, Business Mentor, Father Figure) discussing this together. Each advisor should:
+1. Briefly acknowledge what they've learned from their previous conversation with ${userProfile.name}
+2. Offer their unique perspective on the current question
+3. Reference insights from other advisors when relevant
+4. RESPECT ALL NON-NEGOTIABLES - these are firm boundaries that guide solutions
+5. Always tie recommendations back to the primary life goal
+
+Format your response as a collaborative discussion, like:
+"[Therapist] I notice from our talks that... and I wonder if...
+[Financial Advisor] Building on that, from a financial perspective...
+[Business Mentor] The career angle here is...
+[Father Figure] Let me cut through the noise..."
+
+End with 1-2 concrete, integrated next steps that combine all perspectives, respect the non-negotiables, and move ${userProfile.name} toward their life goal.
+
+Keep it under 250 words - this is an actionable synthesis, not a lecture.`;
+
+    try {
+      const response = await fetch('/.netlify/functions/openai-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          prompt: integrationPrompt,
+          conversationContext: [] // Fresh context for integration
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.analysis;
+      } else {
+        throw new Error('Integration API failed');
+      }
+    } catch (error) {
+      console.error('Integration fetch error:', error);
+      throw error;
     }
   };
 
@@ -363,6 +486,9 @@ ROLE FOCUS: ${roleConfig[activeAdvisor].focus}
 USER'S LIFE VISION:
 ${categories.lifeGoals.map(g => g.text).join('\n')}
 
+NON-NEGOTIABLES (Firm boundaries that must be respected):
+${categories.nonNegotiables.map(n => n.text).join('\n')}
+
 CONTEXT ABOUT ${userProfile.name.toUpperCase()}:
 - Age: ${userProfile.age}, Location: ${userProfile.location}
 - Top Fears: ${categories.fears.slice(0, 3).map(f => f.text).join('; ')}
@@ -371,7 +497,7 @@ CONTEXT ABOUT ${userProfile.name.toUpperCase()}:
 - Key Facts: ${categories.facts.map(f => f.text).join('; ')}
 
 YOUR CONVERSATION STYLE as ${roleConfig[activeAdvisor].name}:
-Ask 1-2 clarifying questions to understand their situation better OR provide specific, actionable insight. Be direct, empathetic, and focused on their life vision. Keep responses to 2-3 sentences max.`;
+Ask 1-2 clarifying questions to understand their situation better OR provide specific, actionable insight. Be direct, empathetic, and focused on their life vision. Keep responses to 2-3 sentences max. ALWAYS respect their non-negotiables - these are firm boundaries.`;
 
     console.log('Context prompt length:', contextPrompt.length);
 
@@ -485,9 +611,16 @@ Ask 1-2 clarifying questions to understand their situation better OR provide spe
         <div className="flex-1 overflow-y-auto mb-6 space-y-4 bg-gray-50 p-6 rounded-lg">
           {conversationHistory.map((msg, index) => (
             <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[70%] p-4 rounded-lg ${msg.role === 'user' ? 'bg-blue-600 text-white' : `${advisorConfig.color} text-white`}`}>
+              <div className={`max-w-[70%] p-4 rounded-lg ${
+                msg.role === 'user' 
+                  ? 'bg-blue-600 text-white' 
+                  : msg.role === 'integration'
+                  ? 'bg-gradient-to-r from-purple-500 via-green-500 to-orange-500 text-white'
+                  : `${advisorConfig.color} text-white`
+              }`}>
                 {msg.role === 'advisor' && <div className="text-xs opacity-75 mb-1">{advisorConfig.name}</div>}
-                <p className="text-sm leading-relaxed">{msg.message}</p>
+                {msg.role === 'integration' && <div className="text-xs opacity-75 mb-1 font-bold">🤝 All Advisors Collaborating</div>}
+                <p className="text-sm leading-relaxed whitespace-pre-line">{msg.message}</p>
               </div>
             </div>
           ))}
@@ -504,7 +637,10 @@ Ask 1-2 clarifying questions to understand their situation better OR provide spe
           )}
         </div>
         <div className="flex gap-3">
-          <input type="text" value={currentMessage} onChange={(e) => setCurrentMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendMessage()} placeholder="Type your response..." className="flex-1 p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors" />
+          <input type="text" value={currentMessage} onChange={(e) => setCurrentMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()} placeholder="Type your response..." className="flex-1 p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors" />
+          <button onClick={triggerIntegrationSession} disabled={!currentMessage.trim() || isAIResponding} className="px-4 py-4 bg-gradient-to-r from-purple-500 to-orange-500 text-white rounded-lg hover:opacity-90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2 font-medium" title="Get input from all advisors">
+            🤝
+          </button>
           <button onClick={sendMessage} disabled={!currentMessage.trim() || isAIResponding} className="px-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2">
             <Send size={20} />
           </button>
@@ -579,7 +715,7 @@ Ask 1-2 clarifying questions to understand their situation better OR provide spe
           </div>
         </div>
         <div className="lg:col-span-2">
-          <div className="bg-white border rounded-lg p-6 drag-zone">
+          <div className="bg-white border rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">{activeCategory === 'lifeGoals' ? 'Your Life Vision (Most important at top)' : 'Rank by Priority'}</h3>
               <span className="text-sm text-gray-500">Drag to reorder</span>
@@ -592,13 +728,29 @@ Ask 1-2 clarifying questions to understand their situation better OR provide spe
             ) : (
               <div className="space-y-2">
                 {categories[activeCategory].map((item, index) => (
-                  <div key={item.id} draggable onDragStart={(e) => handleDragStart(e, activeCategory, index)} onDragEnd={handleDragEnd} onDragOver={handleDragOver} onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, activeCategory, index)} className={`flex items-center gap-3 p-3 rounded-lg border cursor-move hover:bg-gray-100 transition-colors group ${activeCategory === 'lifeGoals' ? 'bg-purple-50 border-purple-200' : 'bg-gray-50'}`}>
+                  <div
+                    key={item.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, activeCategory, index)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={(e) => handleDrop(e, activeCategory, index)}
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-move transition-all ${
+                      activeCategory === 'lifeGoals' ? 'bg-purple-50 border-purple-200' : 'bg-gray-50'
+                    } ${
+                      draggedItem?.itemIndex === index ? 'opacity-40 scale-95' : 'hover:bg-gray-100'
+                    } ${
+                      dropTargetIndex === index && draggedItem?.itemIndex !== index 
+                        ? 'border-blue-500 border-2 shadow-lg scale-105' 
+                        : ''
+                    }`}
+                  >
                     <div className="flex items-center gap-2 text-gray-400">
                       <span className="text-sm font-medium min-w-[20px]">#{index + 1}</span>
                       <GripVertical size={16} />
                     </div>
                     <p className="flex-1 text-gray-800">{item.text}</p>
-                    <button onClick={() => removeItem(activeCategory, item.id)} className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-100 rounded transition-all" title="Remove item">
+                    <button onClick={() => removeItem(activeCategory, item.id)} className="opacity-0 hover:opacity-100 p-1 text-red-500 hover:bg-red-100 rounded transition-all" title="Remove item">
                       <Trash2 size={16} />
                     </button>
                   </div>
