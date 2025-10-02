@@ -15,7 +15,7 @@ const App = () => {
     father: 25
   });
 
-  const defaultCategories = {
+  const demoData = {
     nonNegotiables: [
       { id: 101, text: "My kids come first - no compromise on time with them" },
       { id: 102, text: "I will not sacrifice my health for work" },
@@ -88,7 +88,17 @@ const App = () => {
     ]
   };
 
-  const [categories, setCategories] = useState(defaultCategories);
+  const emptyCategories = {
+    nonNegotiables: [],
+    avoiding: [],
+    fears: [],
+    lessons: [],
+    facts: [],
+    decisions: [],
+    lifeGoals: []
+  };
+
+  const [categories, setCategories] = useState(emptyCategories);
   const [newItemText, setNewItemText] = useState('');
   const [activeCategory, setActiveCategory] = useState('lifeGoals');
   const [draggedItem, setDraggedItem] = useState(null);
@@ -313,8 +323,7 @@ const App = () => {
   };
 
   const loadDefaultData = () => {
-    setCategories(defaultCategories);
-    localStorage.removeItem('breakthroughAppData');
+    setCategories(demoData);
   };
 
   const clearAllData = () => {
