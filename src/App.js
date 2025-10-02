@@ -116,7 +116,7 @@ const App = () => {
   });
 
   useEffect(() => {
-    if (!userProfile.name) return; // Don't load until we have a name
+    if (!userProfile.name) return;
     
     const storageKey = `breakthroughAppData_${userProfile.name.toLowerCase().replace(/\s+/g, '_')}`;
     const savedData = localStorage.getItem(storageKey);
@@ -140,7 +140,7 @@ const App = () => {
   }, [userProfile.name]);
 
   useEffect(() => {
-    if (!userProfile.name) return; // Don't save until we have a name
+    if (!userProfile.name) return;
     
     const storageKey = `breakthroughAppData_${userProfile.name.toLowerCase().replace(/\s+/g, '_')}`;
     const dataToSave = {
@@ -311,7 +311,6 @@ const App = () => {
     const items = [...categories[categoryKey]];
     const [movedItem] = items.splice(draggedItem.itemIndex, 1);
     
-    // Adjust target index if dragging down
     const newIndex = draggedItem.itemIndex < targetIndex ? targetIndex - 1 : targetIndex;
     items.splice(newIndex, 0, movedItem);
     
@@ -329,12 +328,27 @@ const App = () => {
 
   const clearAllData = () => {
     if (window.confirm('Are you sure you want to clear all data? This cannot be undone.')) {
-      setCategories({ avoiding: [], fears: [], lessons: [], facts: [], decisions: [], lifeGoals: [] });
+      const storageKey = `breakthroughAppData_${userProfile.name.toLowerCase().replace(/\s+/g, '_')}`;
+      setCategories({
+        avoiding: [],
+        fears: [],
+        lessons: [],
+        facts: [],
+        decisions: [],
+        lifeGoals: [],
+        nonNegotiables: []
+      });
       setUserProfile({ name: '', age: '', location: '' });
       setCurrentStep('setup');
       setActiveCategory('lifeGoals');
       setConversationHistory([]);
-      localStorage.removeItem('breakthroughAppData');
+      setAdvisorConversations({
+        therapist: [],
+        financialAdvisor: [],
+        businessMentor: [],
+        father: []
+      });
+      localStorage.removeItem(storageKey);
     }
   };
 
@@ -342,7 +356,6 @@ const App = () => {
     setActiveAdvisor(advisorRole);
     setCurrentStep('conversation');
     
-    // Load existing conversation for this advisor or start fresh
     if (advisorConversations[advisorRole].length > 0) {
       setConversationHistory(advisorConversations[advisorRole]);
     } else {
@@ -377,7 +390,6 @@ const App = () => {
       const advisorMsg = { role: 'advisor', advisor: activeAdvisor, message: response, timestamp: new Date() };
       const finalHistory = [...updatedHistory, advisorMsg];
       setConversationHistory(finalHistory);
-      // Save to this advisor's conversation history
       setAdvisorConversations(prev => ({ ...prev, [activeAdvisor]: finalHistory }));
     } catch (error) {
       console.error('AI response failed:', error);
@@ -422,11 +434,10 @@ const App = () => {
   const generateIntegrationResponse = async (userMessage) => {
     console.log('=== INTEGRATION SESSION ===');
     
-    // Gather all advisor conversation summaries
     const advisorSummaries = Object.entries(advisorConversations)
       .filter(([key, history]) => history.length > 1)
       .map(([advisorKey, history]) => {
-        const recentMessages = history.slice(-6); // Last 3 exchanges
+        const recentMessages = history.slice(-6);
         return `${roleConfig[advisorKey].name}:\n${recentMessages.map(msg => `- ${msg.message.substring(0, 150)}...`).join('\n')}`;
       })
       .join('\n\n');
@@ -467,7 +478,7 @@ Keep it under 250 words - this is an actionable synthesis, not a lecture.`;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           prompt: integrationPrompt,
-          conversationContext: [] // Fresh context for integration
+          conversationContext: []
         })
       });
 
@@ -667,10 +678,11 @@ Ask 1-2 clarifying questions to understand their situation better OR provide spe
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-white min-h-screen">
+    <div className="max-w-7xl mx-auto p-6 bg-white min-h-screen relative">
       <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white p-8 rounded-lg mb-8">
         <h1 className="text-4xl font-bold mb-4">What Do You Want Out of This Life, {userProfile.name}?</h1>
-        <p className="text-xl opacity-90 mb-6">Everything else is here to help you get there.</p>
+        <p className="text-xl opacity-90 mb-6">Start by defining your vision - your advisors will help you get there.</p>
+        
         {categories.lifeGoals.length > 0 && (
           <div className="bg-white bg-opacity-20 p-6 rounded-lg backdrop-blur-sm">
             <h3 className="text-lg font-semibold mb-3">Your Vision:</h3>
@@ -684,57 +696,180 @@ Ask 1-2 clarifying questions to understand their situation better OR provide spe
             </ul>
           </div>
         )}
+        
+        {categories.lifeGoals.length === 0 && (
+          <p className="text-sm opacity-75 mt-2">💡 Add your first life goal below to unlock your advisory team</p>
+        )}
       </div>
-      <div className="bg-white border-2 border-gray-200 rounded-lg p-6 mb-6">
-        <h3 className="text-2xl font-semibold mb-2">Your Advisory Team</h3>
-        <p className="text-gray-600 mb-6">Each advisor offers unique perspective to help you reach your life goals. Adjust their influence or start a conversation.</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {Object.entries(roleConfig).map(([key, role]) => (
-            <div key={key} className="space-y-3 p-4 bg-gray-50 rounded-lg">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-12 h-12 rounded-full ${role.color} flex items-center justify-center text-white font-bold text-lg`}>{roleSliders[key]}%</div>
-                    <div>
-                      <label className="font-semibold text-gray-800">{role.name}</label>
-                      <p className="text-xs text-gray-500">{role.description}</p>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-3">{role.focus}</p>
-                </div>
-              </div>
-              <input type="range" min="0" max="100" value={roleSliders[key]} onChange={(e) => handleSliderChange(key, parseInt(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
-              <button onClick={() => startAdvisorConversation(key)} className={`w-full ${role.color} text-white py-2 px-4 rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2`}>
-                <MessageCircle size={16} />Start Conversation
-              </button>
+
+      {!drawerOpen && (
+        <button
+          onClick={() => setDrawerOpen(true)}
+          className={`fixed right-0 top-1/2 -translate-y-1/2 bg-gradient-to-b from-purple-600 via-blue-600 to-orange-600 text-white py-8 px-3 rounded-l-lg shadow-lg hover:px-4 transition-all z-40 ${
+            categories.lifeGoals.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'
+          }`}
+          disabled={categories.lifeGoals.length === 0}
+          title={categories.lifeGoals.length === 0 ? 'Add life goals first to unlock advisors' : 'Open your advisory team'}
+        >
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-2xl">💬</span>
+            <div className="writing-mode-vertical text-sm font-semibold tracking-wider">
+              YOUR ADVISORY TEAM
             </div>
-          ))}
-        </div>
-      </div>
+            {categories.lifeGoals.length > 0 && Object.values(advisorConversations).some(conv => conv.length > 0) && (
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            )}
+          </div>
+        </button>
+      )}
+
+      {drawerOpen && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-30 z-40 transition-opacity"
+            onClick={() => setDrawerOpen(false)}
+          ></div>
+          
+          <div className="fixed right-0 top-0 bottom-0 w-96 bg-white shadow-2xl z-50 overflow-y-auto animate-slide-in-right">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800">Your Advisory Team</h2>
+                  <p className="text-sm text-gray-600 mt-1">Each brings unique expertise</p>
+                </div>
+                <button 
+                  onClick={() => setDrawerOpen(false)}
+                  className="text-gray-500 hover:text-gray-700 p-2"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {Object.entries(roleConfig).map(([key, role]) => (
+                  <div key={key} className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200 hover:border-gray-300 transition-colors">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className={`w-10 h-10 rounded-full ${role.color} flex items-center justify-center text-white font-bold flex-shrink-0`}>
+                        {roleSliders[key]}%
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-800">{role.name}</h3>
+                        <p className="text-xs text-gray-500">{role.description}</p>
+                      </div>
+                    </div>
+                    
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="100" 
+                      value={roleSliders[key]} 
+                      onChange={(e) => handleSliderChange(key, parseInt(e.target.value))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mb-3"
+                    />
+                    
+                    <button 
+                      onClick={() => {
+                        startAdvisorConversation(key);
+                        setDrawerOpen(false);
+                      }}
+                      className={`w-full ${role.color} text-white py-2 px-4 rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 text-sm font-medium`}
+                    >
+                      <MessageCircle size={16} />
+                      {advisorConversations[key].length > 0 ? 'Continue Conversation' : 'Start Conversation'}
+                    </button>
+                    
+                    {advisorConversations[key].length > 0 && (
+                      <p className="text-xs text-gray-500 mt-2 text-center">
+                        {advisorConversations[key].length} messages
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {categories.lifeGoals.length === 0 && (
+                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">💡 <strong>Tip:</strong> Add your life goals first. Your advisors work best when they understand what you're working toward.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="flex flex-wrap gap-2 mb-6 border-b">
-        {Object.entries(categoryConfig).sort(([,a], [,b]) => a.priority - b.priority).map(([key, config]) => (
-          <button key={key} onClick={() => setActiveCategory(key)} className={`px-4 py-2 rounded-t-lg transition-colors text-sm ${activeCategory === key ? key === 'lifeGoals' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-            {config.title} ({categories[key].length})
-          </button>
-        ))}
+        {Object.entries(categoryConfig)
+          .sort(([,a], [,b]) => a.priority - b.priority)
+          .map(([key, config]) => (
+            <button
+              key={key}
+              onClick={() => setActiveCategory(key)}
+              className={`px-4 py-2 rounded-t-lg transition-colors text-sm ${
+                activeCategory === key 
+                  ? key === 'lifeGoals' ? 'bg-purple-600 text-white' : key === 'nonNegotiables' ? 'bg-indigo-600 text-white' : 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {config.title} ({categories[key].length})
+            </button>
+          ))}
       </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1">
-          <div className={`${activeCategory === 'lifeGoals' ? 'bg-purple-50 border-purple-200' : 'bg-gray-50'} p-6 rounded-lg border-2`}>
-            <h2 className="text-xl font-semibold mb-2">{categoryConfig[activeCategory].title}</h2>
-            <p className="text-gray-600 text-sm mb-4">{categoryConfig[activeCategory].description}</p>
+          <div className={`${activeCategory === 'lifeGoals' ? 'bg-purple-50 border-purple-200' : activeCategory === 'nonNegotiables' ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50'} p-6 rounded-lg border-2`}>
+            <h2 className="text-xl font-semibold mb-2">
+              {categoryConfig[activeCategory].title}
+            </h2>
+            <p className="text-gray-600 text-sm mb-4">
+              {categoryConfig[activeCategory].description}
+            </p>
+            
             <div className="space-y-3">
-              <textarea value={newItemText} onChange={(e) => setNewItemText(e.target.value)} placeholder={categoryConfig[activeCategory].placeholder} className="w-full p-3 border rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" rows="3" onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addItem(); } }} />
-              <button onClick={addItem} disabled={!newItemText.trim()} className={`w-full flex items-center justify-center gap-2 ${activeCategory === 'lifeGoals' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'} text-white p-3 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors`}>
-                <Plus size={16} />Add {activeCategory === 'lifeGoals' ? 'Life Goal' : 'Item'}
+              <textarea
+                value={newItemText}
+                onChange={(e) => setNewItemText(e.target.value)}
+                placeholder={categoryConfig[activeCategory].placeholder}
+                className="w-full p-3 border rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                rows="3"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    addItem();
+                  }
+                }}
+              />
+              
+              <button 
+                onClick={addItem}
+                disabled={!newItemText.trim()}
+                className={`w-full flex items-center justify-center gap-2 ${
+                  activeCategory === 'lifeGoals' 
+                    ? 'bg-purple-600 hover:bg-purple-700' 
+                    : activeCategory === 'nonNegotiables'
+                    ? 'bg-indigo-600 hover:bg-indigo-700'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                } text-white p-3 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors`}
+              >
+                <Plus size={16} />
+                Add {activeCategory === 'lifeGoals' ? 'Life Goal' : activeCategory === 'nonNegotiables' ? 'Non-Negotiable' : 'Item'}
               </button>
             </div>
           </div>
         </div>
+
         <div className="lg:col-span-2">
           <div className="bg-white border rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">{activeCategory === 'lifeGoals' ? 'Your Life Vision (Most important at top)' : 'Rank by Priority'}</h3>
+              <h3 className="text-lg font-semibold">
+                {activeCategory === 'lifeGoals' 
+                  ? 'Your Life Vision (Most important at top)' 
+                  : activeCategory === 'nonNegotiables'
+                  ? 'Your Firm Boundaries (Most important at top)'
+                  : 'Rank by Priority'}
+              </h3>
               <span className="text-sm text-gray-500">Drag to reorder</span>
             </div>
             {categories[activeCategory].length === 0 ? (
@@ -753,7 +888,11 @@ Ask 1-2 clarifying questions to understand their situation better OR provide spe
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDrop={(e) => handleDrop(e, activeCategory, index)}
                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-move transition-all ${
-                      activeCategory === 'lifeGoals' ? 'bg-purple-50 border-purple-200' : 'bg-gray-50'
+                      activeCategory === 'lifeGoals' 
+                        ? 'bg-purple-50 border-purple-200' 
+                        : activeCategory === 'nonNegotiables'
+                        ? 'bg-indigo-50 border-indigo-200'
+                        : 'bg-gray-50'
                     } ${
                       draggedItem?.itemIndex === index ? 'opacity-40 scale-95' : 'hover:bg-gray-100'
                     } ${
@@ -777,11 +916,20 @@ Ask 1-2 clarifying questions to understand their situation better OR provide spe
           </div>
         </div>
       </div>
+
       <div className="mt-8 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-800">Ready to work with your advisory team?</h3>
-            <p className="text-gray-600">You've defined {categories.lifeGoals.length} life goals with {getTotalItems() - categories.lifeGoals.length} supporting data points</p>
+            <h3 className="text-lg font-semibold text-gray-800">
+              {categories.lifeGoals.length === 0 
+                ? 'Start by defining what you want out of life'
+                : 'Ready to work with your advisory team?'}
+            </h3>
+            <p className="text-gray-600">
+              {categories.lifeGoals.length === 0
+                ? 'Add your life goals to unlock conversations with your advisory team'
+                : `You've defined ${categories.lifeGoals.length} life goals with ${getTotalItems() - categories.lifeGoals.length} supporting data points`}
+            </p>
           </div>
           <div className="flex gap-3">
             {userProfile.name.toLowerCase() === 'ian' && (
@@ -793,6 +941,26 @@ Ask 1-2 clarifying questions to understand their situation better OR provide spe
           </div>
         </div>
       </div>
+
+      <style>{`
+        .writing-mode-vertical {
+          writing-mode: vertical-rl;
+          text-orientation: mixed;
+        }
+        
+        @keyframes slide-in-right {
+          from {
+            transform: translateX(100%);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
+        
+        .animate-slide-in-right {
+          animation: slide-in-right 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 };
