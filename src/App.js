@@ -107,6 +107,7 @@ const App = () => {
   const [currentMessage, setCurrentMessage] = useState('');
   const [isAIResponding, setIsAIResponding] = useState(false);
   const [activeAdvisor, setActiveAdvisor] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [advisorConversations, setAdvisorConversations] = useState({
     therapist: [],
     financialAdvisor: [],
