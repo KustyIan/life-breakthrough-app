@@ -6,6 +6,7 @@ const App = () => {
   const [wizardStep, setWizardStep] = useState(1);
   const [skipToExplore, setSkipToExplore] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showDiscoveryHelper, setShowDiscoveryHelper] = useState(false);
   
   // User data
   const [userName, setUserName] = useState('');
@@ -36,6 +37,15 @@ const App = () => {
     triggerReason: ''
   });
   
+  // Discovery answers
+  const [discoveryAnswers, setDiscoveryAnswers] = useState({
+    energizes: '',
+    childhood: '',
+    admire: '',
+    noFail: '',
+    anger: ''
+  });
+  
   // Life categories
   const [lifeGoals, setLifeGoals] = useState('');
   const [nonNegotiables, setNonNegotiables] = useState('');
@@ -55,6 +65,16 @@ const App = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
+  
+  // Advisor mode state
+  const [selectedMode, setSelectedMode] = useState('balanced');
+  const [customWeights, setCustomWeights] = useState({ 
+    therapist: 25, 
+    coach: 25, 
+    financial: 25, 
+    strategist: 25 
+  });
+  const [showModeSelector, setShowModeSelector] = useState(false);
   
   // Track completed sections
   const [completedSections, setCompletedSections] = useState({
@@ -148,15 +168,172 @@ const App = () => {
     }
   ];
 
-  // Add new state for advisor mode
-  const [selectedMode, setSelectedMode] = useState('balanced');
-  const [customWeights, setCustomWeights] = useState({ 
-    therapist: 25, 
-    coach: 25, 
-    financial: 25, 
-    strategist: 25 
-  });
-  const [showModeSelector, setShowModeSelector] = useState(false);
+  // Discovery Helper Component
+  const DiscoveryHelper = () => {
+    const quickPrompts = [
+      { emoji: '⏰', text: 'More control over my time and schedule' },
+      { emoji: '💰', text: 'Financial freedom and security' },
+      { emoji: '💕', text: 'Deeper, more meaningful relationships' },
+      { emoji: '💪', text: 'Better health and more energy' },
+      { emoji: '🎯', text: 'Work that feels meaningful and fulfilling' },
+      { emoji: '🌍', text: 'Travel and new experiences' },
+      { emoji: '🧘', text: 'Inner peace and less stress' },
+      { emoji: '🚀', text: 'Build something of my own' },
+      { emoji: '📚', text: 'Keep learning and growing' },
+      { emoji: '🏡', text: 'A comfortable, beautiful home' },
+      { emoji: '👨‍👩‍👧', text: 'More quality time with family' },
+      { emoji: '🎨', text: 'Creative expression and artistic pursuits' },
+      { emoji: '💡', text: 'Make a positive impact on others' },
+      { emoji: '⚖️', text: 'Better work-life balance' }
+    ];
+
+    const deepQuestions = [
+      {
+        id: 'energizes',
+        question: 'What activities make you lose track of time?',
+        placeholder: 'When I\'m coding, writing, gardening, teaching others...'
+      },
+      {
+        id: 'childhood',
+        question: 'What did you dream about becoming as a child?',
+        placeholder: 'I wanted to be an inventor, explorer, teacher...'
+      },
+      {
+        id: 'admire',
+        question: 'What do you admire in others\' lives?',
+        placeholder: 'Their freedom to travel, their impact on community, their confidence...'
+      },
+      {
+        id: 'noFail',
+        question: 'What would you try if you knew you couldn\'t fail?',
+        placeholder: 'Start a company, write a novel, move to another country...'
+      },
+      {
+        id: 'anger',
+        question: 'What problems in the world make you angry?',
+        placeholder: 'Educational inequality, environmental destruction, loneliness epidemic...'
+      }
+    ];
+
+    const addToLifeGoals = (text) => {
+      const currentGoals = lifeGoals.trim();
+      const newGoal = currentGoals ? `${currentGoals}\n${text}` : text;
+      setLifeGoals(newGoal);
+    };
+
+    const generateGoalsFromAnswers = () => {
+      let generated = [];
+      
+      if (discoveryAnswers.energizes) {
+        generated.push(`Spend more time ${discoveryAnswers.energizes.toLowerCase()}`);
+      }
+      if (discoveryAnswers.childhood) {
+        generated.push(`Reconnect with my childhood dream of ${discoveryAnswers.childhood.toLowerCase()}`);
+      }
+      if (discoveryAnswers.admire) {
+        generated.push(`Create a life with ${discoveryAnswers.admire.toLowerCase()}`);
+      }
+      if (discoveryAnswers.noFail) {
+        generated.push(`Have the courage to ${discoveryAnswers.noFail.toLowerCase()}`);
+      }
+      if (discoveryAnswers.anger) {
+        generated.push(`Make a difference in ${discoveryAnswers.anger.toLowerCase()}`);
+      }
+      
+      if (generated.length > 0) {
+        const currentGoals = lifeGoals.trim();
+        const newGoals = currentGoals ? `${currentGoals}\n${generated.join('\n')}` : generated.join('\n');
+        setLifeGoals(newGoals);
+        setShowDiscoveryHelper(false);
+        setDiscoveryAnswers({ energizes: '', childhood: '', admire: '', noFail: '', anger: '' });
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold">Discovery Helper</h2>
+              <p className="text-sm text-gray-500">Let's figure out what you really want</p>
+            </div>
+            <button 
+              onClick={() => setShowDiscoveryHelper(false)}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          
+          <div className="p-6 space-y-6">
+            {/* Quick Prompts Section */}
+            <div>
+              <h3 className="font-medium mb-3">Quick Starts - Click any that resonate:</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {quickPrompts.map((prompt, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      addToLifeGoals(prompt.text);
+                    }}
+                    className="text-left p-3 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all flex items-center gap-2"
+                  >
+                    <span className="text-xl">{prompt.emoji}</span>
+                    <span className="text-sm">{prompt.text}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-sm text-gray-500 font-medium">OR EXPLORE DEEPER</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            {/* Deep Questions Section */}
+            <div>
+              <h3 className="font-medium mb-3">Answer these questions to uncover hidden desires:</h3>
+              <div className="space-y-4">
+                {deepQuestions.map((q) => (
+                  <div key={q.id}>
+                    <label className="block text-sm font-medium mb-1">{q.question}</label>
+                    <textarea
+                      value={discoveryAnswers[q.id]}
+                      onChange={(e) => setDiscoveryAnswers({...discoveryAnswers, [q.id]: e.target.value})}
+                      className="w-full p-3 border rounded-lg h-20 resize-none"
+                      placeholder={q.placeholder}
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              <button
+                onClick={generateGoalsFromAnswers}
+                disabled={!Object.values(discoveryAnswers).some(v => v.trim())}
+                className="mt-4 w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Generate Life Goals from My Answers
+              </button>
+            </div>
+
+            {/* Tips Section */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium mb-2 text-sm">💡 Tips for discovering what you want:</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• Don't overthink - go with your first instinct</li>
+                <li>• Ignore what others expect from you</li>
+                <li>• Think about what energizes vs drains you</li>
+                <li>• Consider what you'd regret NOT doing</li>
+                <li>• It's okay to want "simple" things like peace or freedom</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     const storedData = localStorage.getItem(`userData_${userName}`);
@@ -345,15 +522,41 @@ const App = () => {
     setDrawerOpen(false);
     
     if (!advisorMessages[advisorId]) {
-      const initialMessage = {
-        role: 'assistant',
-        content: `Hello ${userName || 'there'}! I'm your ${advisor.name}. I've reviewed everything you've shared. ${
-          advisor.id === 'therapist' ? "I notice you're dealing with some significant fears and challenges. Let's explore what's behind them." :
-          advisor.id === 'coach' ? "You have some inspiring life goals! Let's create a concrete plan to achieve them." :
-          advisor.id === 'financial' ? `I see you need ${hardConstraints.monthlyIncomeNeeded || '0'}/month. Let's build a financial strategy that supports your life vision.` :
-          "I can see the full picture of where you are and where you want to be. Let's create a strategic roadmap."
-        } What would you like to focus on first?`
-      };
+      let initialMessage;
+      
+      if (advisorId === 'supervisor') {
+        const mode = advisorModes.find(m => m.id === selectedMode);
+        const goalCount = lifeGoals.split('\n').filter(g => g.trim()).length;
+        const hasClarity = goalCount >= 3 && lifeGoals.length > 100;
+        
+        const clarityMessage = !hasClarity ? 
+          `\n\nI notice you might still be exploring what you want from life. This is actually the most important work we can do together. Would you like me to help you discover your true desires? Just say "Help me get clear on what I want."` : '';
+        
+        initialMessage = {
+          role: 'assistant',
+          content: `Hello ${userName || 'there'}! I'm your Lead Advisor, here to coordinate your life breakthrough journey. I've reviewed everything you've shared - your goals, constraints, fears, and current situation. 
+          
+I'm currently in "${mode.name}" mode, which means ${mode.description.toLowerCase()}. You can change this anytime by clicking the mode selector above.
+
+Based on what you've shared, I see a few key areas we should focus on:
+${hardConstraints.monthlyIncomeNeeded && hardConstraints.currentMonthlyIncome && parseInt(hardConstraints.monthlyIncomeNeeded) > parseInt(hardConstraints.currentMonthlyIncome) ? `• There's a gap between your income needs ($${hardConstraints.monthlyIncomeNeeded}) and current income ($${hardConstraints.currentMonthlyIncome})` : ''}
+${fears ? `• You're dealing with some significant fears that are holding you back` : ''}
+${decisions ? `• You have important decisions pending that need clarity` : ''}
+${lifeGoals ? `• You have ambitious life goals that need a strategic plan` : ''}
+
+Where would you like to start? Or would you prefer I suggest a path forward?${clarityMessage}`
+        };
+      } else {
+        initialMessage = {
+          role: 'assistant',
+          content: `Hello ${userName || 'there'}! I'm your ${advisor.name}. I've reviewed everything you've shared. ${
+            advisor.id === 'therapist' ? "I notice you're dealing with some significant fears and challenges. Let's explore what's behind them." :
+            advisor.id === 'coach' ? "You have some inspiring life goals! Let's create a concrete plan to achieve them." :
+            advisor.id === 'financial' ? `I see you need $${hardConstraints.monthlyIncomeNeeded || '0'}/month with current savings of $${hardConstraints.savings || '0'} and debt of $${hardConstraints.debt || '0'}. Let's build a financial strategy that supports your life vision.` :
+            "I can see the full picture of where you are and where you want to be. Let's create a strategic roadmap."
+          } What would you like to focus on first?`
+        };
+      }
       
       setAdvisorMessages(prev => ({
         ...prev,
@@ -361,6 +564,14 @@ const App = () => {
       }));
     }
   };
+
+  // Auto-start supervisor conversation when advisors unlock
+  useEffect(() => {
+    if (currentStep === 'main' && canTalkToAdvisors() && !currentAdvisor && !Object.keys(advisorMessages).length) {
+      startAdvisorConversation('supervisor');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep]);
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !currentAdvisor || isLoading) return;
@@ -495,6 +706,8 @@ const App = () => {
             </div>
           </div>
         )}
+        
+        {showDiscoveryHelper && <DiscoveryHelper />}
         
         <div className="max-w-2xl mx-auto">
           <div className="flex justify-between items-center mb-6">
@@ -722,12 +935,44 @@ const App = () => {
               <div className="space-y-4">
                 <h2 className="text-xl font-bold mb-4">Life Vision</h2>
                 <p className="text-gray-600">What do you want out of life? Dream big!</p>
+                
+                {/* Clarity Helper - Shows when goals are empty or very short */}
+                {(!lifeGoals || lifeGoals.length < 50) && (
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">🧭</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-amber-900 mb-1">
+                          Need help getting clear on what you want?
+                        </p>
+                        <p className="text-sm text-amber-700 mb-2">
+                          Many people struggle with this - you're not alone! Our Discovery Helper can guide you.
+                        </p>
+                        <button 
+                          onClick={() => setShowDiscoveryHelper(true)}
+                          className="bg-amber-100 text-amber-900 hover:bg-amber-200 px-4 py-2 rounded-lg font-medium text-sm transition-all"
+                        >
+                          Open Discovery Helper →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <textarea
                   value={lifeGoals}
                   onChange={(e) => setLifeGoals(e.target.value)}
                   className="w-full p-3 border rounded-lg h-48"
                   placeholder="Enter each goal on a new line...&#10;&#10;Examples:&#10;• Financial freedom by 45&#10;• Travel to 30 countries&#10;• Start my own business&#10;• Write a book"
                 />
+                
+                {lifeGoals && lifeGoals.length > 50 && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-800">
+                      ✓ Great start! You can always refine these later with your Lead Advisor.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             
@@ -1099,7 +1344,7 @@ const App = () => {
               </div>
             ) : (
               <div className="p-4">
-                {activeCategory ? (
+                {activeCategoryData ? (
                   <>
                     <div className="mb-4">
                       <textarea
