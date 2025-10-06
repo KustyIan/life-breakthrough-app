@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, GripVertical, Trash2, MessageCircle, ArrowLeft, User, Calendar, Send, ChevronRight, CheckCircle, Circle, X } from 'lucide-react';
+import { GripVertical, Trash2, MessageCircle, ArrowLeft, Send, ChevronRight, CheckCircle, Circle, X } from 'lucide-react';
 
 const App = () => {
   const [currentStep, setCurrentStep] = useState('setup');
@@ -293,23 +293,12 @@ const App = () => {
     setDrawerOpen(false);
     
     if (!advisorMessages[advisorId]) {
-      const context = {
-        lifeGoals: lifeGoals.split('\n').filter(item => item.trim()),
-        nonNegotiables: nonNegotiables.split('\n').filter(item => item.trim()),
-        fears: fears.split('\n').filter(item => item.trim()),
-        lessons: lessons.split('\n').filter(item => item.trim()),
-        facts: facts.split('\n').filter(item => item.trim()),
-        decisions: decisions.split('\n').filter(item => item.trim()),
-        hardConstraints,
-        currentSituation
-      };
-      
       const initialMessage = {
         role: 'assistant',
         content: `Hello ${userName || 'there'}! I'm your ${advisor.name}. I've reviewed everything you've shared. ${
           advisor.id === 'therapist' ? "I notice you're dealing with some significant fears and challenges. Let's explore what's behind them." :
           advisor.id === 'coach' ? "You have some inspiring life goals! Let's create a concrete plan to achieve them." :
-          advisor.id === 'financial' ? `I see you need $${hardConstraints.monthlyIncomeNeeded || '0'}/month. Let's build a financial strategy that supports your life vision.` :
+          advisor.id === 'financial' ? `I see you need ${hardConstraints.monthlyIncomeNeeded || '0'}/month. Let's build a financial strategy that supports your life vision.` :
           "I can see the full picture of where you are and where you want to be. Let's create a strategic roadmap."
         } What would you like to focus on first?`
       };
@@ -741,8 +730,8 @@ const App = () => {
   };
 
   const renderMainApp = () => {
-    const activeCategory = categories.find(c => c.id === activeCategory);
-    const items = activeCategory ? activeCategory.state.split('\n').filter(item => item.trim()) : [];
+    const activeCategoryData = categories.find(c => c.id === activeCategory);
+    const items = activeCategoryData ? activeCategoryData.state.split('\n').filter(item => item.trim()) : [];
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex">
@@ -825,7 +814,7 @@ const App = () => {
             
             <h1 className="text-lg font-semibold">
               {currentAdvisor ? `Talking with ${currentAdvisor.name}` : 
-               activeCategory ? categories.find(c => c.id === activeCategory)?.label : 'Select a category'}
+               activeCategoryData ? activeCategoryData.label : 'Select a category'}
             </h1>
             
             <div className="text-sm text-gray-500">
