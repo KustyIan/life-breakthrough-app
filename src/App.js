@@ -1,271 +1,242 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, GripVertical, Trash2, MessageCircle, ArrowLeft, User, Calendar, Send, ChevronRight, CheckCircle, Circle } from 'lucide-react';
+import { Plus, GripVertical, Trash2, MessageCircle, ArrowLeft, User, Calendar, Send, ChevronRight, CheckCircle, Circle, X } from 'lucide-react';
 
 const App = () => {
   const [currentStep, setCurrentStep] = useState('setup');
   const [wizardStep, setWizardStep] = useState(1);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [userProfile, setUserProfile] = useState({
-    name: '',
-    age: '',
-    maritalStatus: '',
-    hasKids: false,
-    numberOfKids: '',
-    kidsAges: ''
-  });
-  const [roleSliders, setRoleSliders] = useState({
-    therapist: 25,
-    financialAdvisor: 25, 
-    businessMentor: 25,
-    father: 25
-  });
-
+  const [skipToExplore, setSkipToExplore] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  
+  // User data
+  const [userName, setUserName] = useState('');
+  const [userAge, setUserAge] = useState('');
+  const [maritalStatus, setMaritalStatus] = useState('single');
+  const [hasKids, setHasKids] = useState(false);
+  const [kidsAges, setKidsAges] = useState('');
+  
+  // Hard constraints
   const [hardConstraints, setHardConstraints] = useState({
     monthlyIncomeNeeded: '',
     currentMonthlyIncome: '',
     savingsDebt: '',
-    mustStayInLocation: false,
+    locationLocked: false,
     locationReason: '',
     locationDuration: '',
     otherDeadlines: ''
   });
-
+  
+  // Current situation
   const [currentSituation, setCurrentSituation] = useState({
     workStatus: '',
     workDescription: '',
     healthConstraints: '',
+    energyLevel: '',
     supportSystem: '',
-    whatBroughtYouHere: ''
+    triggerReason: ''
   });
-
-  const emptyCategories = {
-    lifeGoals: [],
-    nonNegotiables: [],
-    fears: [],
-    avoiding: [],
-    lessons: [],
-    facts: [],
-    decisions: []
-  };
-
-  const [categories, setCategories] = useState(emptyCategories);
+  
+  // Life categories
+  const [lifeGoals, setLifeGoals] = useState('');
+  const [nonNegotiables, setNonNegotiables] = useState('');
+  const [fears, setFears] = useState('');
+  const [lessons, setLessons] = useState('');
+  const [facts, setFacts] = useState('');
+  const [decisions, setDecisions] = useState('');
+  
+  // Advisor conversations
+  const [activeCategory, setActiveCategory] = useState('life-goals');
+  const [advisorMessages, setAdvisorMessages] = useState({});
+  const [currentAdvisor, setCurrentAdvisor] = useState(null);
+  const [newMessage, setNewMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Drawer and drag state
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState(null);
+  
+  // Track completed sections
   const [completedSections, setCompletedSections] = useState({
     demographics: false,
     hardConstraints: false,
     lifeGoals: false,
     nonNegotiables: false,
     currentSituation: false,
-    barriers: false,
-    foundation: false,
+    fears: false,
+    lessons: false,
     decisions: false
   });
 
-  const [newItemText, setNewItemText] = useState('');
-  const [activeCategory, setActiveCategory] = useState('lifeGoals');
-  const [draggedItem, setDraggedItem] = useState(null);
-  const [dropTargetIndex, setDropTargetIndex] = useState(null);
-  const [conversationHistory, setConversationHistory] = useState([]);
-  const [currentMessage, setCurrentMessage] = useState('');
-  const [isAIResponding, setIsAIResponding] = useState(false);
-  const [activeAdvisor, setActiveAdvisor] = useState(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [advisorConversations, setAdvisorConversations] = useState({
-    therapist: [],
-    financialAdvisor: [],
-    businessMentor: [],
-    father: []
-  });
-
-  useEffect(() => {
-    if (!userProfile.name) return;
-    
-    const storageKey = `breakthroughAppData_${userProfile.name.toLowerCase().replace(/\s+/g, '_')}`;
-    const savedData = localStorage.getItem(storageKey);
-    
-    if (savedData) {
-      const parsed = JSON.parse(savedData);
-      if (parsed.userProfile) setUserProfile(parsed.userProfile);
-      if (parsed.roleSliders) setRoleSliders(parsed.roleSliders);
-      if (parsed.hardConstraints) setHardConstraints(parsed.hardConstraints);
-      if (parsed.currentSituation) setCurrentSituation(parsed.currentSituation);
-      if (parsed.currentStep) setCurrentStep(parsed.currentStep);
-      if (parsed.wizardStep) setWizardStep(parsed.wizardStep);
-      if (parsed.completedSections) setCompletedSections(parsed.completedSections);
-      if (parsed.categories) setCategories(parsed.categories);
-      if (parsed.conversationHistory) setConversationHistory(parsed.conversationHistory);
-      if (parsed.advisorConversations) setAdvisorConversations(parsed.advisorConversations);
-    }
-  }, [userProfile.name]);
-
-  useEffect(() => {
-    if (!userProfile.name) return;
-    
-    const storageKey = `breakthroughAppData_${userProfile.name.toLowerCase().replace(/\s+/g, '_')}`;
-    const dataToSave = {
-      userProfile,
-      roleSliders,
-      hardConstraints,
-      currentSituation,
-      categories,
-      currentStep,
-      wizardStep,
-      completedSections,
-      conversationHistory,
-      advisorConversations
-    };
-    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-  }, [userProfile, roleSliders, hardConstraints, currentSituation, categories, currentStep, wizardStep, completedSections, conversationHistory, advisorConversations]);
-
-  const wizardSteps = [
-    { num: 1, title: 'Who You Are', key: 'demographics' },
-    { num: 2, title: 'Hard Constraints', key: 'hardConstraints' },
-    { num: 3, title: 'Life Vision', key: 'lifeGoals' },
-    { num: 4, title: 'Non-Negotiables', key: 'nonNegotiables' },
-    { num: 5, title: 'Current Situation', key: 'currentSituation' },
-    { num: 6, title: 'Barriers', key: 'barriers' },
-    { num: 7, title: 'Foundation', key: 'foundation' },
-    { num: 8, title: 'Decisions', key: 'decisions' }
+  const categories = [
+    { id: 'life-goals', label: 'Life Goals', color: 'emerald', state: lifeGoals, setState: setLifeGoals },
+    { id: 'non-negotiables', label: 'Non-Negotiables', color: 'red', state: nonNegotiables, setState: setNonNegotiables },
+    { id: 'fears', label: 'Fears & Avoidances', color: 'purple', state: fears, setState: setFears },
+    { id: 'lessons', label: 'Lessons & Facts', color: 'blue', state: lessons, setState: setLessons },
+    { id: 'decisions', label: 'Pending Decisions', color: 'amber', state: decisions, setState: setDecisions }
   ];
 
-  const categoryConfig = {
-    lifeGoals: {
-      title: "What do you want out of this life?",
-      placeholder: "e.g., Build a business that gives me freedom and helps others",
-      description: "Your aspirations, dreams, and what success means to you",
-      wizardStep: 3
+  const advisors = [
+    { 
+      id: 'therapist',
+      name: 'Therapist',
+      description: 'For emotional support and clarity',
+      emoji: '🧠',
+      gradient: 'from-purple-500 to-pink-500'
     },
-    nonNegotiables: {
-      title: "What are your non-negotiables?",
-      placeholder: "e.g., My kids always come first, I will not compromise my integrity",
-      description: "Firm boundaries and commitments that guide your path to your life vision",
-      wizardStep: 4
+    {
+      id: 'coach',
+      name: 'Life Coach', 
+      description: 'For motivation and goal-setting',
+      emoji: '🎯',
+      gradient: 'from-blue-500 to-cyan-500'
     },
-    avoiding: {
-      title: "What are you avoiding?",
-      placeholder: "e.g., Having a difficult conversation with my boss",
-      description: "Things blocking your path to your life goals",
-      wizardStep: 6
+    {
+      id: 'financial',
+      name: 'Financial Advisor',
+      description: 'For money and career decisions',
+      emoji: '💰',
+      gradient: 'from-green-500 to-emerald-500'
     },
-    fears: {
-      title: "What are your fears?",
-      placeholder: "e.g., Fear of financial instability",
-      description: "What's holding you back from your vision",
-      wizardStep: 6
-    },
-    lessons: {
-      title: "What did you learn last year?",
-      placeholder: "e.g., I need to set better boundaries",
-      description: "Resources you can use to reach your goals",
-      wizardStep: 7
-    },
-    facts: {
-      title: "Facts and Responsibilities",
-      placeholder: "e.g., I have 2 kids, I need to earn $80k annually",
-      description: "Realities that shape your path forward",
-      wizardStep: 7
-    },
-    decisions: {
-      title: "Decisions I need to make",
-      placeholder: "e.g., Whether to change careers",
-      description: "Choices that will move you toward your goals",
-      wizardStep: 8
+    {
+      id: 'strategist',
+      name: 'Strategist',
+      description: 'For planning and problem-solving',
+      emoji: '♟️',
+      gradient: 'from-orange-500 to-red-500'
     }
-  };
+  ];
 
-  const roleConfig = {
-    therapist: {
-      name: "Therapist",
-      description: "Emotional wellness & relationships",
-      color: "bg-purple-500",
-      focus: "Understanding your emotional patterns and relational dynamics to support your life vision"
-    },
-    financialAdvisor: {
-      name: "Financial Advisor", 
-      description: "Money & financial strategy",
-      color: "bg-green-500",
-      focus: "Creating financial stability and abundance to enable your desired lifestyle"
-    },
-    businessMentor: {
-      name: "Business Mentor",
-      description: "Career & professional growth", 
-      color: "bg-blue-500",
-      focus: "Building a career path that aligns with your authentic self and life goals"
-    },
-    father: {
-      name: "Father Figure",
-      description: "Wisdom & life guidance",
-      color: "bg-orange-500",
-      focus: "Providing perspective, tough love, and wisdom to help you become who you want to be"
+  useEffect(() => {
+    const storedData = localStorage.getItem(`userData_${userName}`);
+    if (storedData && userName) {
+      const parsed = JSON.parse(storedData);
+      setLifeGoals(parsed.lifeGoals || '');
+      setNonNegotiables(parsed.nonNegotiables || '');
+      setFears(parsed.fears || '');
+      setLessons(parsed.lessons || '');
+      setFacts(parsed.facts || '');
+      setDecisions(parsed.decisions || '');
+      setAdvisorMessages(parsed.advisorMessages || {});
+      setCompletedSections(parsed.completedSections || {});
+      setHardConstraints(parsed.hardConstraints || {});
+      setCurrentSituation(parsed.currentSituation || {});
     }
-  };
+  }, [userName]);
 
-  const getCompletionPercentage = () => {
-    const completed = Object.values(completedSections).filter(v => v).length;
-    return Math.round((completed / 8) * 100);
-  };
+  useEffect(() => {
+    if (userName && currentStep === 'main') {
+      const userData = {
+        lifeGoals,
+        nonNegotiables,
+        fears,
+        lessons,
+        facts,
+        decisions,
+        advisorMessages,
+        completedSections,
+        hardConstraints,
+        currentSituation
+      };
+      localStorage.setItem(`userData_${userName}`, JSON.stringify(userData));
+    }
+  }, [lifeGoals, nonNegotiables, fears, lessons, facts, decisions, advisorMessages, completedSections, hardConstraints, currentSituation, userName, currentStep]);
 
-  const canUnlockAdvisors = () => {
-    return completedSections.lifeGoals && 
-           Object.values(completedSections).filter(v => v).length >= 3;
-  };
-
-  const markSectionComplete = (section) => {
-    setCompletedSections(prev => ({ ...prev, [section]: true }));
-  };
-
-  const handleSliderChange = (changedRole, newValue) => {
-    const currentTotal = Object.values(roleSliders).reduce((sum, val) => sum + val, 0);
-    const otherRoles = Object.keys(roleSliders).filter(role => role !== changedRole);
-    const otherTotal = currentTotal - roleSliders[changedRole];
-    const newSliders = { ...roleSliders, [changedRole]: newValue };
+  const handleWizardNext = () => {
+    let sectionComplete = false;
     
-    if (otherTotal > 0) {
-      const remainingPercentage = 100 - newValue;
-      otherRoles.forEach(role => {
-        const proportion = roleSliders[role] / otherTotal;
-        newSliders[role] = Math.max(0, Math.round(remainingPercentage * proportion));
-      });
-    } else {
-      const equalShare = Math.floor((100 - newValue) / otherRoles.length);
-      otherRoles.forEach(role => {
-        newSliders[role] = equalShare;
-      });
+    switch(wizardStep) {
+      case 1:
+        if (userName && userAge) {
+          setCompletedSections(prev => ({ ...prev, demographics: true }));
+          sectionComplete = true;
+        }
+        break;
+      case 2:
+        if (hardConstraints.monthlyIncomeNeeded) {
+          setCompletedSections(prev => ({ ...prev, hardConstraints: true }));
+          sectionComplete = true;
+        }
+        break;
+      case 3:
+        if (lifeGoals) {
+          setCompletedSections(prev => ({ ...prev, lifeGoals: true }));
+          sectionComplete = true;
+        }
+        break;
+      case 4:
+        if (nonNegotiables) {
+          setCompletedSections(prev => ({ ...prev, nonNegotiables: true }));
+          sectionComplete = true;
+        }
+        break;
+      case 5:
+        if (currentSituation.workStatus) {
+          setCompletedSections(prev => ({ ...prev, currentSituation: true }));
+          sectionComplete = true;
+        }
+        break;
+      case 6:
+        if (fears) {
+          setCompletedSections(prev => ({ ...prev, fears: true }));
+          sectionComplete = true;
+        }
+        break;
+      case 7:
+        if (lessons) {
+          setCompletedSections(prev => ({ ...prev, lessons: true }));
+          sectionComplete = true;
+        }
+        break;
+      case 8:
+        if (decisions) {
+          setCompletedSections(prev => ({ ...prev, decisions: true }));
+          sectionComplete = true;
+          setCurrentStep('main');
+          return;
+        }
+        break;
+      default:
+        sectionComplete = true;
     }
     
-    const finalTotal = Object.values(newSliders).reduce((sum, val) => sum + val, 0);
-    if (finalTotal !== 100) {
-      const adjustment = 100 - finalTotal;
-      const adjustRole = otherRoles[0];
-      newSliders[adjustRole] = Math.max(0, newSliders[adjustRole] + adjustment);
+    if (sectionComplete) {
+      if (wizardStep === 8) {
+        setCurrentStep('main');
+      } else {
+        setWizardStep(wizardStep + 1);
+      }
     }
-    
-    setRoleSliders(newSliders);
   };
 
-  const calculateDefaultSliders = () => {
-    const age = parseInt(userProfile.age) || 25;
-    if (age < 25) return { therapist: 30, financialAdvisor: 20, businessMentor: 35, father: 15 };
-    if (age < 35) return { therapist: 25, financialAdvisor: 30, businessMentor: 30, father: 15 };
-    if (age < 50) return { therapist: 20, financialAdvisor: 35, businessMentor: 25, father: 20 };
-    return { therapist: 20, financialAdvisor: 30, businessMentor: 20, father: 30 };
+  const handleSkipToExplore = () => {
+    setSkipToExplore(true);
+    setCurrentStep('main');
   };
 
-  const addItem = () => {
-    if (!newItemText.trim()) return;
-    const newItem = { id: Date.now(), text: newItemText.trim() };
-    setCategories(prev => ({ ...prev, [activeCategory]: [...prev[activeCategory], newItem] }));
-    setNewItemText('');
+  const getCompletedCount = () => {
+    return Object.values(completedSections).filter(v => v).length;
   };
 
-  const removeItem = (categoryKey, itemId) => {
-    setCategories(prev => ({
-      ...prev,
-      [categoryKey]: prev[categoryKey].filter(item => item.id !== itemId)
-    }));
+  const canTalkToAdvisors = () => {
+    return completedSections.lifeGoals && getCompletedCount() >= 3;
   };
 
-  const handleDragStart = (e, categoryKey, itemIndex) => {
-    setDraggedItem({ categoryKey, itemIndex });
+  const handleCategorySelect = (categoryId) => {
+    setActiveCategory(categoryId);
+    if (window.innerWidth < 768) {
+      setDrawerOpen(false);
+    }
+  };
+
+  const handleInputChange = (value) => {
+    const category = categories.find(c => c.id === activeCategory);
+    if (category) {
+      category.setState(value);
+    }
+  };
+
+  const handleDragStart = (e, item, index) => {
+    setDraggedItem({ item, index, categoryId: activeCategory });
     e.dataTransfer.effectAllowed = 'move';
   };
 
@@ -274,644 +245,703 @@ const App = () => {
     setDropTargetIndex(null);
   };
 
-  const handleDragOver = (e, targetIndex) => {
+  const handleDragOver = (e, index) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    if (draggedItem && targetIndex !== draggedItem.itemIndex) {
-      setDropTargetIndex(targetIndex);
+    if (draggedItem && draggedItem.index !== index) {
+      setDropTargetIndex(index);
     }
   };
 
-  const handleDrop = (e, categoryKey, targetIndex) => {
+  const handleDrop = (e, targetIndex) => {
     e.preventDefault();
-    setDropTargetIndex(null);
+    if (!draggedItem || draggedItem.index === targetIndex) return;
     
-    if (!draggedItem || draggedItem.categoryKey !== categoryKey) return;
-    if (draggedItem.itemIndex === targetIndex) return;
+    const category = categories.find(c => c.id === activeCategory);
+    if (!category) return;
     
-    const items = [...categories[categoryKey]];
-    const [movedItem] = items.splice(draggedItem.itemIndex, 1);
+    const items = category.state.split('\n').filter(item => item.trim());
+    const [movedItem] = items.splice(draggedItem.index, 1);
+    items.splice(targetIndex, 0, movedItem);
+    category.setState(items.join('\n'));
     
-    const newIndex = draggedItem.itemIndex < targetIndex ? targetIndex - 1 : targetIndex;
-    items.splice(newIndex, 0, movedItem);
-    
-    setCategories(prev => ({ ...prev, [categoryKey]: items }));
     setDraggedItem(null);
+    setDropTargetIndex(null);
+  };
+
+  const deleteItem = (index) => {
+    const category = categories.find(c => c.id === activeCategory);
+    if (!category) return;
+    
+    const items = category.state.split('\n').filter(item => item.trim());
+    items.splice(index, 1);
+    category.setState(items.join('\n'));
   };
 
   const getTotalItems = () => {
-    return Object.values(categories).reduce((total, items) => total + items.length, 0);
+    return categories.reduce((total, cat) => {
+      const items = cat.state.split('\n').filter(item => item.trim());
+      return total + items.length;
+    }, 0);
   };
 
-  const clearAllData = () => {
-    if (window.confirm('Are you sure you want to clear all data? This cannot be undone.')) {
-      const storageKey = `breakthroughAppData_${userProfile.name.toLowerCase().replace(/\s+/g, '_')}`;
-      setCategories(emptyCategories);
-      setUserProfile({ name: '', age: '', maritalStatus: '', hasKids: false, numberOfKids: '', kidsAges: '' });
-      setHardConstraints({ monthlyIncomeNeeded: '', currentMonthlyIncome: '', savingsDebt: '', mustStayInLocation: false, locationReason: '', locationDuration: '', otherDeadlines: '' });
-      setCurrentSituation({ workStatus: '', workDescription: '', healthConstraints: '', supportSystem: '', whatBroughtYouHere: '' });
-      setCompletedSections({ demographics: false, hardConstraints: false, lifeGoals: false, nonNegotiables: false, currentSituation: false, barriers: false, foundation: false, decisions: false });
-      setCurrentStep('setup');
-      setWizardStep(1);
-      setConversationHistory([]);
-      setAdvisorConversations({ therapist: [], financialAdvisor: [], businessMentor: [], father: [] });
-      localStorage.removeItem(storageKey);
-    }
-  };
-
-  const startAdvisorConversation = (advisorRole) => {
-    setActiveAdvisor(advisorRole);
-    setCurrentStep('conversation');
+  const startAdvisorConversation = async (advisorId) => {
+    const advisor = advisors.find(a => a.id === advisorId);
+    if (!advisor) return;
     
-    if (advisorConversations[advisorRole].length > 0) {
-      setConversationHistory(advisorConversations[advisorRole]);
-    } else {
-      const greeting = generateAdvisorGreeting(advisorRole);
-      const initialHistory = [{ role: 'advisor', advisor: advisorRole, message: greeting, timestamp: new Date() }];
-      setConversationHistory(initialHistory);
-      setAdvisorConversations(prev => ({ ...prev, [advisorRole]: initialHistory }));
-    }
-  };
-
-  const generateAdvisorGreeting = (advisorRole) => {
-    const topGoal = categories.lifeGoals[0]?.text || "your life goals";
-    const name = userProfile.name;
+    setCurrentAdvisor(advisor);
+    setDrawerOpen(false);
     
-    const greetings = {
-      therapist: `Hi ${name}, I'm here to help you understand the emotional patterns that might be blocking you from "${topGoal}". Let's explore what's really going on beneath the surface. What feels most stuck right now?`,
-      financialAdvisor: `${name}, let's talk about the financial side of reaching "${topGoal}". I see you need about $${hardConstraints.monthlyIncomeNeeded || '?'} monthly. What's your biggest financial concern right now?`,
-      businessMentor: `Hey ${name}, I want to help you build a career that actually serves "${topGoal}". Given your current situation, what kind of work would make you feel alive?`,
-      father: `${name}, let's get real about "${topGoal}". ${userProfile.hasKids ? `You've got ${userProfile.numberOfKids} kids - they're watching.` : ''} What are you most afraid of when it comes to making this vision real?`
-    };
-    return greetings[advisorRole];
+    if (!advisorMessages[advisorId]) {
+      const context = {
+        lifeGoals: lifeGoals.split('\n').filter(item => item.trim()),
+        nonNegotiables: nonNegotiables.split('\n').filter(item => item.trim()),
+        fears: fears.split('\n').filter(item => item.trim()),
+        lessons: lessons.split('\n').filter(item => item.trim()),
+        facts: facts.split('\n').filter(item => item.trim()),
+        decisions: decisions.split('\n').filter(item => item.trim()),
+        hardConstraints,
+        currentSituation
+      };
+      
+      const initialMessage = {
+        role: 'assistant',
+        content: `Hello ${userName || 'there'}! I'm your ${advisor.name}. I've reviewed everything you've shared. ${
+          advisor.id === 'therapist' ? "I notice you're dealing with some significant fears and challenges. Let's explore what's behind them." :
+          advisor.id === 'coach' ? "You have some inspiring life goals! Let's create a concrete plan to achieve them." :
+          advisor.id === 'financial' ? `I see you need $${hardConstraints.monthlyIncomeNeeded || '0'}/month. Let's build a financial strategy that supports your life vision.` :
+          "I can see the full picture of where you are and where you want to be. Let's create a strategic roadmap."
+        } What would you like to focus on first?`
+      };
+      
+      setAdvisorMessages(prev => ({
+        ...prev,
+        [advisorId]: [initialMessage]
+      }));
+    }
   };
 
   const sendMessage = async () => {
-    if (!currentMessage.trim()) return;
-    const userMsg = { role: 'user', message: currentMessage, timestamp: new Date() };
-    const updatedHistory = [...conversationHistory, userMsg];
-    setConversationHistory(updatedHistory);
-    setCurrentMessage('');
-    setIsAIResponding(true);
+    if (!newMessage.trim() || !currentAdvisor || isLoading) return;
+    
+    const userMessage = {
+      role: 'user',
+      content: newMessage
+    };
+    
+    setAdvisorMessages(prev => ({
+      ...prev,
+      [currentAdvisor.id]: [...(prev[currentAdvisor.id] || []), userMessage]
+    }));
+    
+    setNewMessage('');
+    setIsLoading(true);
     
     try {
-      const response = await generateAIResponse(currentMessage);
-      const advisorMsg = { role: 'advisor', advisor: activeAdvisor, message: response, timestamp: new Date() };
-      const finalHistory = [...updatedHistory, advisorMsg];
-      setConversationHistory(finalHistory);
-      setAdvisorConversations(prev => ({ ...prev, [activeAdvisor]: finalHistory }));
-    } catch (error) {
-      console.error('AI response failed:', error);
-      const fallbackMsg = { role: 'advisor', advisor: activeAdvisor, message: "I'm having trouble connecting right now. Can you tell me more about that?", timestamp: new Date() };
-      const finalHistory = [...updatedHistory, fallbackMsg];
-      setConversationHistory(finalHistory);
-      setAdvisorConversations(prev => ({ ...prev, [activeAdvisor]: finalHistory }));
-    } finally {
-      setIsAIResponding(false);
-    }
-  };
-
-  const triggerIntegrationSession = async () => {
-    if (!currentMessage.trim()) return;
-    const userMsg = { role: 'user', message: currentMessage, timestamp: new Date() };
-    const updatedHistory = [...conversationHistory, userMsg];
-    setConversationHistory(updatedHistory);
-    setCurrentMessage('');
-    setIsAIResponding(true);
-
-    try {
-      const response = await generateIntegrationResponse(currentMessage);
-      const integrationMsg = { role: 'integration', message: response, timestamp: new Date() };
-      const finalHistory = [...updatedHistory, integrationMsg];
-      setConversationHistory(finalHistory);
-      setAdvisorConversations(prev => ({ ...prev, [activeAdvisor]: finalHistory }));
-    } catch (error) {
-      console.error('Integration session failed:', error);
-      const fallbackMsg = { role: 'advisor', advisor: activeAdvisor, message: "I'm having trouble connecting the team right now. Let me respond individually for now.", timestamp: new Date() };
-      const finalHistory = [...updatedHistory, fallbackMsg];
-      setConversationHistory(finalHistory);
-      setAdvisorConversations(prev => ({ ...prev, [activeAdvisor]: finalHistory }));
-    } finally {
-      setIsAIResponding(false);
-    }
-  };
-
-  const generateIntegrationResponse = async (userMessage) => {
-    const advisorSummaries = Object.entries(advisorConversations)
-      .filter(([, history]) => history.length > 1)
-      .map(([advisorKey, history]) => {
-        const recentMessages = history.slice(-6);
-        return `${roleConfig[advisorKey].name}:\n${recentMessages.map(msg => `- ${msg.message.substring(0, 150)}...`).join('\n')}`;
-      })
-      .join('\n\n');
-
-    const integrationPrompt = `You are facilitating an INTEGRATION SESSION where all 4 advisors collaborate on ${userProfile.name}'s question.
-
-USER'S PRIMARY LIFE GOAL: ${categories.lifeGoals[0]?.text || 'Not yet defined'}
-
-NON-NEGOTIABLES: ${categories.nonNegotiables.map(n => n.text).join('\n') || 'None specified.'}
-
-RECENT CONVERSATIONS: ${advisorSummaries || 'No previous conversations.'}
-
-USER'S CURRENT QUESTION: "${userMessage}"
-
-YOUR TASK: Simulate all 4 advisors discussing this together. Format as:
-"[Therapist] ...
-[Financial Advisor] ...
-[Business Mentor] ...
-[Father Figure] ..."
-
-End with 1-2 concrete, integrated next steps. Keep under 250 words.`;
-
-    try {
-      const response = await fetch('/.netlify/functions/openai-analysis', {
+      const response = await fetch('/.netlify/functions/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: integrationPrompt, conversationContext: [] })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.analysis;
-      }
-      throw new Error('Integration API failed');
-    } catch (error) {
-      console.error('Integration fetch error:', error);
-      throw error;
-    }
-  };
-
-  const generateAIResponse = async (userMessage) => {
-    const conversationContext = conversationHistory.map(msg => ({
-      role: msg.role === 'user' ? 'user' : 'assistant',
-      content: msg.message
-    }));
-
-    const contextPrompt = `You are a ${roleConfig[activeAdvisor].name} speaking to ${userProfile.name}.
-
-ROLE FOCUS: ${roleConfig[activeAdvisor].focus}
-
-USER'S LIFE VISION: ${categories.lifeGoals.map(g => g.text).join('\n')}
-NON-NEGOTIABLES: ${categories.nonNegotiables.map(n => n.text).join('\n')}
-
-CONTEXT:
-- Age: ${userProfile.age}, ${userProfile.maritalStatus || 'relationship status not specified'}
-- ${userProfile.hasKids ? `${userProfile.numberOfKids} kids (ages: ${userProfile.kidsAges})` : 'No kids'}
-- Work: ${currentSituation.workStatus} ${currentSituation.workDescription ? `- ${currentSituation.workDescription}` : ''}
-- Financial need: $${hardConstraints.monthlyIncomeNeeded || '?'}/month
-- Top Fears: ${categories.fears.slice(0, 3).map(f => f.text).join('; ')}
-
-Ask 1-2 clarifying questions OR provide specific insight. Keep responses to 2-3 sentences. Respect non-negotiables.`;
-
-    try {
-      const response = await fetch('/.netlify/functions/openai-analysis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt: `${contextPrompt}\n\nUSER: "${userMessage}"\n\nYOUR RESPONSE:`,
-          conversationContext: conversationContext
+        body: JSON.stringify({
+          messages: [...(advisorMessages[currentAdvisor.id] || []), userMessage],
+          advisorType: currentAdvisor.id,
+          context: {
+            lifeGoals,
+            nonNegotiables,
+            fears,
+            lessons,
+            decisions,
+            hardConstraints,
+            currentSituation,
+            userName
+          }
         })
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.analysis;
-      }
-      throw new Error('API request failed');
+      
+      const data = await response.json();
+      
+      setAdvisorMessages(prev => ({
+        ...prev,
+        [currentAdvisor.id]: [...prev[currentAdvisor.id], {
+          role: 'assistant',
+          content: data.message
+        }]
+      }));
     } catch (error) {
-      return generateFallbackResponse();
+      console.error('Error:', error);
+      setAdvisorMessages(prev => ({
+        ...prev,
+        [currentAdvisor.id]: [...prev[currentAdvisor.id], {
+          role: 'assistant',
+          content: "I'm having trouble connecting right now. Please try again in a moment."
+        }]
+      }));
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const generateFallbackResponse = () => {
-    const responses = {
-      therapist: ["That's a lot to carry. What emotion comes up strongest?", "I hear you. How long have you felt this way?"],
-      financialAdvisor: ["Let's look at the numbers. How much runway do you have?", "What income streams have you considered?"],
-      businessMentor: ["What skills are you not fully using?", "When did you last feel energized by work?"],
-      father: ["Stop overthinking. What's the first small step?", "Your kids are watching. What do you want them to learn?"]
-    };
-    const advisorResponses = responses[activeAdvisor];
-    return advisorResponses[Math.floor(Math.random() * advisorResponses.length)];
-  };
-
-  // WIZARD STEP 1: WHO YOU ARE
-  if (currentStep === 'setup' && wizardStep === 1) {
+  const renderWizardStep = () => {
+    const wizardSteps = [
+      'Who You Are',
+      'Hard Constraints',
+      'Life Vision',
+      'Non-Negotiables',
+      'Current Situation',
+      'Barriers',
+      'Foundation',
+      'Pending Decisions'
+    ];
+    
     return (
-      <div className="max-w-2xl mx-auto p-6 bg-white min-h-screen">
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-8 rounded-lg mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome to Your Breakthrough Journey</h1>
-          <p className="text-lg opacity-90">Step 1 of 8: Tell us about yourself</p>
-        </div>
-
-        <div className="space-y-6">
-          <div>
-            <label className="flex items-center gap-2 text-lg font-semibold text-gray-700 mb-3">
-              <User size={20} />What's your name?
-            </label>
-            <input type="text" value={userProfile.name} onChange={(e) => setUserProfile(prev => ({ ...prev, name: e.target.value }))} placeholder="Enter your first name" className="w-full p-4 text-lg border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200" />
-          </div>
-
-          <div>
-            <label className="flex items-center gap-2 text-lg font-semibold text-gray-700 mb-3">
-              <Calendar size={20} />How old are you?
-            </label>
-            <input type="number" value={userProfile.age} onChange={(e) => setUserProfile(prev => ({ ...prev, age: e.target.value }))} placeholder="Enter your age" className="w-full p-4 text-lg border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200" />
-          </div>
-
-          <div>
-            <label className="text-lg font-semibold text-gray-700 mb-3 block">What's your marital status?</label>
-            <select value={userProfile.maritalStatus} onChange={(e) => setUserProfile(prev => ({ ...prev, maritalStatus: e.target.value }))} className="w-full p-4 text-lg border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
-              <option value="">Select...</option>
-              <option value="Single">Single</option>
-              <option value="In a relationship">In a relationship</option>
-              <option value="Married">Married</option>
-              <option value="Divorced/Separated">Divorced/Separated</option>
-              <option value="Widowed">Widowed</option>
-              <option value="Prefer not to say">Prefer not to say</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-lg font-semibold text-gray-700 mb-3 block">Do you have kids?</label>
-            <div className="flex gap-4 mb-4">
-              <button onClick={() => setUserProfile(prev => ({ ...prev, hasKids: true }))} className={`flex-1 p-4 rounded-lg border-2 transition-colors ${userProfile.hasKids ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'}`}>Yes</button>
-              <button onClick={() => setUserProfile(prev => ({ ...prev, hasKids: false, numberOfKids: '', kidsAges: '' }))} className={`flex-1 p-4 rounded-lg border-2 transition-colors ${!userProfile.hasKids ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'}`}>No</button>
-            </div>
-
-            {userProfile.hasKids && (
-              <>
-                <input type="number" value={userProfile.numberOfKids} onChange={(e) => setUserProfile(prev => ({ ...prev, numberOfKids: e.target.value }))} placeholder="How many kids?" className="w-full p-4 mb-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500" />
-                <input type="text" value={userProfile.kidsAges} onChange={(e) => setUserProfile(prev => ({ ...prev, kidsAges: e.target.value }))} placeholder="What are their ages? (e.g., 8, 10, 14)" className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-indigo-500" />
-                <p className="text-sm text-gray-600 mt-2">This helps your advisors understand your timeline - like how long kids will be at home - and tailor guidance to your family situation.</p>
-              </>
-            )}
-          </div>
-
-          <button onClick={() => { markSectionComplete('demographics'); setWizardStep(2); }} disabled={!userProfile.name || !userProfile.age} className="w-full mt-8 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-lg font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-            Continue <ChevronRight size={20} />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // WIZARD STEP 2: HARD CONSTRAINTS
-  if (currentStep === 'setup' && wizardStep === 2) {
-    return (
-      <div className="max-w-2xl mx-auto p-6 bg-white min-h-screen">
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-8 rounded-lg mb-8">
-          <h1 className="text-3xl font-bold mb-2">Your Financial & Location Reality</h1>
-          <p className="text-lg opacity-90">Step 2 of 8: Understanding your constraints helps us give realistic advice</p>
-        </div>
-
-        <div className="space-y-6">
-          <div>
-            <label className="text-lg font-semibold text-gray-700 mb-2 block">Monthly income you need</label>
-            <input type="number" value={hardConstraints.monthlyIncomeNeeded} onChange={(e) => setHardConstraints(prev => ({ ...prev, monthlyIncomeNeeded: e.target.value }))} placeholder="e.g., 20000" className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-indigo-500" />
-          </div>
-
-          <div>
-            <label className="text-lg font-semibold text-gray-700 mb-2 block">Current monthly income</label>
-            <input type="number" value={hardConstraints.currentMonthlyIncome} onChange={(e) => setHardConstraints(prev => ({ ...prev, currentMonthlyIncome: e.target.value }))} placeholder="e.g., 15000" className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-indigo-500" />
-          </div>
-
-          <div>
-            <label className="text-lg font-semibold text-gray-700 mb-2 block">Savings or debt situation</label>
-            <input type="text" value={hardConstraints.savingsDebt} onChange={(e) => setHardConstraints(prev => ({ ...prev, savingsDebt: e.target.value }))} placeholder="e.g., $800k assets, $60k debt" className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-indigo-500" />
-          </div>
-
-          <div>
-            <label className="text-lg font-semibold text-gray-700 mb-3 block">Must you stay in your current location?</label>
-            <div className="flex gap-4 mb-4">
-              <button onClick={() => setHardConstraints(prev => ({ ...prev, mustStayInLocation: true }))} className={`flex-1 p-4 rounded-lg border-2 ${hardConstraints.mustStayInLocation ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'}`}>Yes</button>
-              <button onClick={() => setHardConstraints(prev => ({ ...prev, mustStayInLocation: false, locationReason: '', locationDuration: '' }))} className={`flex-1 p-4 rounded-lg border-2 ${!hardConstraints.mustStayInLocation ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'}`}>No</button>
-            </div>
-
-            {hardConstraints.mustStayInLocation && (
-              <>
-                <input type="text" value={hardConstraints.locationReason} onChange={(e) => setHardConstraints(prev => ({ ...prev, locationReason: e.target.value }))} placeholder="Why? (e.g., kids' school, custody, job)" className="w-full p-4 mb-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500" />
-                <input type="text" value={hardConstraints.locationDuration} onChange={(e) => setHardConstraints(prev => ({ ...prev, locationDuration: e.target.value }))} placeholder="For how long? (e.g., 6 years, indefinitely)" className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-indigo-500" />
-              </>
-            )}
-          </div>
-
-          <div>
-            <label className="text-lg font-semibold text-gray-700 mb-2 block">Any other hard deadlines or time constraints?</label>
-            <textarea value={hardConstraints.otherDeadlines} onChange={(e) => setHardConstraints(prev => ({ ...prev, otherDeadlines: e.target.value }))} placeholder="e.g., retirement in 10 years, parent needs care" rows="3" className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-indigo-500" />
-          </div>
-
-          <div className="flex gap-3">
-            <button onClick={() => setWizardStep(1)} className="px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50">Back</button>
-            <button onClick={() => { markSectionComplete('hardConstraints'); setWizardStep(3); }} className="flex-1 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 flex items-center justify-center gap-2">
-              Continue <ChevronRight size={20} />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // WIZARD STEP 3: LIFE VISION (with escape hatch)
-  if (currentStep === 'setup' && wizardStep === 3) {
-    return (
-      <div className="max-w-3xl mx-auto p-6 bg-white min-h-screen">
-        <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white p-8 rounded-lg mb-8">
-          <h1 className="text-3xl font-bold mb-2">What Do You Want Out of This Life?</h1>
-          <p className="text-lg opacity-90">Step 3 of 8: Define your vision - everything else supports this</p>
-        </div>
-
-        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-yellow-900"><strong>After this step:</strong> You can continue the guided setup (recommended) or skip ahead and explore freely.</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <textarea value={newItemText} onChange={(e) => setNewItemText(e.target.value)} placeholder="e.g., Build a business that gives me freedom and helps others" rows="3" className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-purple-500 mb-3" />
-            <button onClick={() => { addItem(); if (categories.lifeGoals.length === 0) markSectionComplete('lifeGoals'); }} disabled={!newItemText.trim()} className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-lg disabled:bg-gray-300">
-              <Plus size={16} />Add Life Goal
-            </button>
-          </div>
-
-          <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
-            <h3 className="font-semibold mb-3">Your Life Vision</h3>
-            {categories.lifeGoals.length === 0 ? (
-              <p className="text-gray-500 text-sm">Add your first life goal to continue</p>
-            ) : (
-              <div className="space-y-2">
-                {categories.lifeGoals.map((goal, index) => (
-                  <div key={goal.id} className="flex items-start gap-2 text-sm">
-                    <span className="font-bold text-purple-600">#{index + 1}</span>
-                    <p className="flex-1">{goal.text}</p>
-                    <button onClick={() => removeItem('lifeGoals', goal.id)} className="text-red-500 hover:text-red-700">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4">
+        {showProfile && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Your Profile</h2>
+                <button onClick={() => setShowProfile(false)} className="p-1">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-8 flex gap-3">
-          <button onClick={() => setWizardStep(2)} className="px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50">Back</button>
-          <button onClick={() => { if (categories.lifeGoals.length > 0) markSectionComplete('lifeGoals'); setWizardStep(4); }} disabled={categories.lifeGoals.length === 0} className="flex-1 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 flex items-center justify-center gap-2">
-            Continue Guided Setup <ChevronRight size={20} />
-          </button>
-          <button onClick={() => { if (categories.lifeGoals.length > 0) { markSectionComplete('lifeGoals'); const defaults = calculateDefaultSliders(); setRoleSliders(defaults); setCurrentStep('input'); } }} disabled={categories.lifeGoals.length === 0} className="px-6 py-3 border-2 border-purple-500 text-purple-600 rounded-lg hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed">
-            Skip to Explore
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // WIZARD STEPS 4-8 would follow similar pattern...
-  // For brevity, I'll create a generic wizard step component that handles the remaining steps
-
-  if (currentStep === 'setup' && wizardStep > 3) {
-    const stepConfig = {
-      4: { title: 'Non-Negotiables', category: 'nonNegotiables', section: 'nonNegotiables', color: 'indigo' },
-      5: { title: 'Current Situation', category: null, section: 'currentSituation', color: 'blue' },
-      6: { title: 'Barriers (Fears & Avoidances)', category: 'fears', section: 'barriers', color: 'red' },
-      7: { title: 'Foundation (Lessons & Facts)', category: 'lessons', section: 'foundation', color: 'green' },
-      8: { title: 'Pending Decisions', category: 'decisions', section: 'decisions', color: 'orange' }
-    };
-
-    const config = stepConfig[wizardStep];
-
-    if (wizardStep === 5) {
-      // Current Situation - special form
-      return (
-        <div className="max-w-2xl mx-auto p-6 bg-white min-h-screen">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-8 rounded-lg mb-8">
-            <h1 className="text-3xl font-bold mb-2">Your Current Situation</h1>
-            <p className="text-lg opacity-90">Step 5 of 8: Help us understand where you are right now</p>
-          </div>
-
-          <div className="space-y-6">
-            <div>
-              <label className="text-lg font-semibold text-gray-700 mb-2 block">Work status</label>
-              <select value={currentSituation.workStatus} onChange={(e) => setCurrentSituation(prev => ({ ...prev, workStatus: e.target.value }))} className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500">
-                <option value="">Select...</option>
-                <option value="Employed full-time">Employed full-time</option>
-                <option value="Employed part-time">Employed part-time</option>
-                <option value="Self-employed/Entrepreneur">Self-employed/Entrepreneur</option>
-                <option value="Freelancing">Freelancing</option>
-                <option value="Between jobs">Between jobs</option>
-                <option value="Student">Student</option>
-                <option value="Retired">Retired</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-lg font-semibold text-gray-700 mb-2 block">Tell us more about your work</label>
-              <textarea value={currentSituation.workDescription} onChange={(e) => setCurrentSituation(prev => ({ ...prev, workDescription: e.target.value }))} placeholder="e.g., Software developer at tech startup, looking to transition" rows="3" className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500" />
-            </div>
-
-            <div>
-              <label className="text-lg font-semibold text-gray-700 mb-2 block">Health constraints or considerations</label>
-              <textarea value={currentSituation.healthConstraints} onChange={(e) => setCurrentSituation(prev => ({ ...prev, healthConstraints: e.target.value }))} placeholder="e.g., chronic condition, energy levels, mental health" rows="3" className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500" />
-            </div>
-
-            <div>
-              <label className="text-lg font-semibold text-gray-700 mb-2 block">Who can you lean on for support?</label>
-              <textarea value={currentSituation.supportSystem} onChange={(e) => setCurrentSituation(prev => ({ ...prev, supportSystem: e.target.value }))} placeholder="e.g., close friends, family, therapist, community" rows="3" className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500" />
-            </div>
-
-            <div>
-              <label className="text-lg font-semibold text-gray-700 mb-2 block">What brought you here today?</label>
-              <textarea value={currentSituation.whatBroughtYouHere} onChange={(e) => setCurrentSituation(prev => ({ ...prev, whatBroughtYouHere: e.target.value }))} placeholder="e.g., feeling stuck in career, major life transition, specific challenge" rows="3" className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500" />
-            </div>
-
-            <div className="flex gap-3 mt-8">
-              <button onClick={() => setWizardStep(4)} className="px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50">Back</button>
-              <button onClick={() => { markSectionComplete('currentSituation'); setWizardStep(6); }} className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 flex items-center justify-center gap-2">
-                Continue <ChevronRight size={20} />
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Generic category step (4, 6, 7, 8)
-    return (
-      <div className="max-w-3xl mx-auto p-6 bg-white min-h-screen">
-        <div className={`bg-gradient-to-r from-${config.color}-600 to-${config.color}-700 text-white p-8 rounded-lg mb-8`}>
-          <h1 className="text-3xl font-bold mb-2">{config.title}</h1>
-          <p className="text-lg opacity-90">Step {wizardStep} of 8</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <label className="text-lg font-semibold text-gray-700 mb-3 block">{categoryConfig[config.category]?.description}</label>
-            <textarea value={newItemText} onChange={(e) => setNewItemText(e.target.value)} placeholder={categoryConfig[config.category]?.placeholder} rows="3" className={`w-full p-4 border-2 border-gray-200 rounded-lg focus:border-${config.color}-500 mb-3`} />
-            <button onClick={() => { addItem(); if (categories[config.category]?.length === 0) markSectionComplete(config.section); }} disabled={!newItemText.trim()} className={`w-full flex items-center justify-center gap-2 bg-${config.color}-600 hover:bg-${config.color}-700 text-white p-3 rounded-lg disabled:bg-gray-300`}>
-              <Plus size={16} />Add Item
-            </button>
-          </div>
-
-          <div className={`bg-${config.color}-50 border-2 border-${config.color}-200 rounded-lg p-4`}>
-            <h3 className="font-semibold mb-3">Your {config.title}</h3>
-            {categories[config.category]?.length === 0 ? (
-              <p className="text-gray-500 text-sm">No items yet - add to continue</p>
-            ) : (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {categories[config.category]?.map((item, index) => (
-                  <div key={item.id} className="flex items-start gap-2 text-sm">
-                    <span className={`font-bold text-${config.color}-600`}>#{index + 1}</span>
-                    <p className="flex-1">{item.text}</p>
-                    <button onClick={() => removeItem(config.category, item.id)} className="text-red-500 hover:text-red-700">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-8 flex gap-3">
-          <button onClick={() => setWizardStep(wizardStep - 1)} className="px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50">Back</button>
-          <button onClick={() => { if (categories[config.category]?.length > 0) markSectionComplete(config.section); if (wizardStep === 8) { const defaults = calculateDefaultSliders(); setRoleSliders(defaults); setCurrentStep('input'); } else setWizardStep(wizardStep + 1); }} className={`flex-1 py-4 bg-gradient-to-r from-${config.color}-600 to-${config.color}-700 text-white font-semibold rounded-lg hover:from-${config.color}-700 hover:to-${config.color}-800 flex items-center justify-center gap-2`}>
-            {wizardStep === 8 ? 'Complete Setup' : 'Continue'} <ChevronRight size={20} />
-          </button>
-          <button onClick={() => { if (categories[config.category]?.length > 0) markSectionComplete(config.section); const defaults = calculateDefaultSliders(); setRoleSliders(defaults); setCurrentStep('input'); }} className="px-6 py-3 border-2 border-gray-400 text-gray-600 rounded-lg hover:bg-gray-50">
-            Skip Rest
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // CONVERSATION SCREEN (unchanged)
-  if (currentStep === 'conversation' && activeAdvisor && roleConfig[activeAdvisor]) {
-    const advisorConfig = roleConfig[activeAdvisor];
-    return (
-      <div className="max-w-4xl mx-auto p-6 bg-white min-h-screen flex flex-col">
-        <div className={`${advisorConfig.color} text-white p-6 rounded-lg mb-6`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold mb-2">Conversation with {advisorConfig.name}</h1>
-              <p className="opacity-90">{advisorConfig.focus}</p>
-            </div>
-            <button onClick={() => setCurrentStep('input')} className="px-4 py-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30">
-              <ArrowLeft size={20} />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto mb-6 space-y-4 bg-gray-50 p-6 rounded-lg">
-          {conversationHistory.map((msg, index) => (
-            <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[70%] p-4 rounded-lg ${
-                msg.role === 'user' ? 'bg-blue-600 text-white' : msg.role === 'integration' ? 'bg-gradient-to-r from-purple-500 via-green-500 to-orange-500 text-white' : `${advisorConfig.color} text-white`
-              }`}>
-                {msg.role === 'advisor' && <div className="text-xs opacity-75 mb-1">{advisorConfig.name}</div>}
-                {msg.role === 'integration' && <div className="text-xs opacity-75 mb-1 font-bold">All Advisors Collaborating</div>}
-                <p className="text-sm leading-relaxed whitespace-pre-line">{msg.message}</p>
-              </div>
-            </div>
-          ))}
-          {isAIResponding && (
-            <div className="flex justify-start">
-              <div className={`max-w-[70%] p-4 rounded-lg ${advisorConfig.color} text-white`}>
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-500">Name</p>
+                  <p className="font-medium">{userName || 'Not set'}</p>
                 </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-3">
-          <input type="text" value={currentMessage} onChange={(e) => setCurrentMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()} placeholder="Type your response..." className="flex-1 p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500" />
-          <button onClick={triggerIntegrationSession} disabled={!currentMessage.trim() || isAIResponding} className="px-4 py-4 bg-gradient-to-r from-purple-500 to-orange-500 text-white rounded-lg hover:opacity-90 disabled:bg-gray-300" title="Get input from all advisors">
-            <span className="text-lg">🤝</span>
-          </button>
-          <button onClick={sendMessage} disabled={!currentMessage.trim() || isAIResponding} className="px-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 flex items-center gap-2">
-            <Send size={20} />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // MAIN INPUT SCREEN (with profile and completion tracking)
-  return (
-    <div className="max-w-7xl mx-auto p-6 bg-white min-h-screen relative">
-      {/* Profile Button */}
-      <button onClick={() => setShowProfileModal(true)} className="fixed top-6 right-6 w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-lg hover:bg-indigo-700 shadow-lg z-30">
-        {userProfile.name.charAt(0).toUpperCase()}
-      </button>
-
-      {/* Profile Modal */}
-      {showProfileModal && (
-        <>
-          <div className="fixed inset-0 bg-black bg-opacity-30 z-40" onClick={() => setShowProfileModal(false)}></div>
-          <div className="fixed right-6 top-20 w-96 bg-white rounded-lg shadow-2xl z-50 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold">Your Profile</h2>
-              <button onClick={() => setShowProfileModal(false)} className="text-gray-500 hover:text-gray-700">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div><strong>Name:</strong> {userProfile.name}</div>
-              <div><strong>Age:</strong> {userProfile.age}</div>
-              <div><strong>Marital Status:</strong> {userProfile.maritalStatus || 'Not specified'}</div>
-              <div><strong>Kids:</strong> {userProfile.hasKids ? `${userProfile.numberOfKids} (ages: ${userProfile.kidsAges})` : 'No'}</div>
-              
-              <div className="pt-4 border-t">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold">Setup Progress</span>
-                  <span className="text-sm text-gray-600">{getCompletionPercentage()}%</span>
+                <div>
+                  <p className="text-sm text-gray-500">Age</p>
+                  <p className="font-medium">{userAge || 'Not set'}</p>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-                  <div className="bg-indigo-600 h-2 rounded-full transition-all" style={{ width: `${getCompletionPercentage()}%` }}></div>
+                <div>
+                  <p className="text-sm text-gray-500">Marital Status</p>
+                  <p className="font-medium capitalize">{maritalStatus}</p>
                 </div>
-                
-                <div className="space-y-2 text-sm">
-                  {wizardSteps.map(step => (
-                    <div key={step.key} className="flex items-center gap-2">
-                      {completedSections[step.key] ? <CheckCircle size={16} className="text-green-500" /> : <Circle size={16} className="text-gray-300" />}
-                      <span className={completedSections[step.key] ? 'text-gray-900' : 'text-gray-400'}>{step.title}</span>
+                <div>
+                  <p className="text-sm text-gray-500">Completion</p>
+                  <p className="font-medium">{Math.round((getCompletedCount() / 8) * 100)}%</p>
+                </div>
+                <div className="pt-4 space-y-2">
+                  {Object.entries(completedSections).map(([key, value]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      {value ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Circle className="h-4 w-4 text-gray-300" />
+                      )}
+                      <span className="text-sm capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
                     </div>
                   ))}
                 </div>
               </div>
-
-              <button onClick={clearAllData} className="w-full mt-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
-                Clear All Data
-              </button>
             </div>
           </div>
-        </>
-      )}
-
-      {/* Completion Banner */}
-      {!canUnlockAdvisors() && (
-        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mb-6">
-          <p className="text-yellow-900"><strong>{getCompletionPercentage()}% complete</strong> - Add life goals and complete 2 more sections to unlock advisor conversations</p>
+        )}
+        
+        <div className="max-w-2xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-4">
+              {wizardStep > 1 && (
+                <button 
+                  onClick={() => setWizardStep(wizardStep - 1)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+              )}
+              <h1 className="text-2xl font-bold">Life Breakthrough Setup</h1>
+            </div>
+            <button 
+              onClick={() => setShowProfile(true)}
+              className="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold"
+            >
+              {userName ? userName[0].toUpperCase() : 'U'}
+            </button>
+          </div>
+          
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-500">Step {wizardStep} of 8</span>
+              <span className="text-sm text-gray-500">{wizardSteps[wizardStep - 1]}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-indigo-600 h-2 rounded-full transition-all"
+                style={{ width: `${(wizardStep / 8) * 100}%` }}
+              />
+            </div>
+          </div>
+          
+          {wizardStep === 3 && !skipToExplore && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                You can now continue with guided setup (recommended) or skip to explore freely.
+                You'll need to complete Life Goals + 2 other sections to unlock advisors.
+              </p>
+              <button
+                onClick={handleSkipToExplore}
+                className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >
+                Skip to explore freely →
+              </button>
+            </div>
+          )}
+          
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            {wizardStep === 1 && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold mb-4">Who You Are</h2>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Your Name</label>
+                  <input
+                    type="text"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    className="w-full p-3 border rounded-lg"
+                    placeholder="Enter your name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Age</label>
+                  <input
+                    type="number"
+                    value={userAge}
+                    onChange={(e) => setUserAge(e.target.value)}
+                    className="w-full p-3 border rounded-lg"
+                    placeholder="Your age"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Marital Status</label>
+                  <select
+                    value={maritalStatus}
+                    onChange={(e) => setMaritalStatus(e.target.value)}
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value="single">Single</option>
+                    <option value="married">Married</option>
+                    <option value="divorced">Divorced</option>
+                    <option value="widowed">Widowed</option>
+                    <option value="partnered">Partnered</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={hasKids}
+                      onChange={(e) => setHasKids(e.target.checked)}
+                      className="rounded"
+                    />
+                    <span className="text-sm font-medium">I have children</span>
+                  </label>
+                  {hasKids && (
+                    <input
+                      type="text"
+                      value={kidsAges}
+                      onChange={(e) => setKidsAges(e.target.value)}
+                      className="w-full p-3 border rounded-lg mt-2"
+                      placeholder="Ages of children (e.g., 5, 8, 12)"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {wizardStep === 2 && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold mb-4">Hard Constraints</h2>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Monthly Income Needed</label>
+                  <input
+                    type="number"
+                    value={hardConstraints.monthlyIncomeNeeded}
+                    onChange={(e) => setHardConstraints({...hardConstraints, monthlyIncomeNeeded: e.target.value})}
+                    className="w-full p-3 border rounded-lg"
+                    placeholder="$ per month"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Current Monthly Income</label>
+                  <input
+                    type="number"
+                    value={hardConstraints.currentMonthlyIncome}
+                    onChange={(e) => setHardConstraints({...hardConstraints, currentMonthlyIncome: e.target.value})}
+                    className="w-full p-3 border rounded-lg"
+                    placeholder="$ per month"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Savings / Debt</label>
+                  <input
+                    type="text"
+                    value={hardConstraints.savingsDebt}
+                    onChange={(e) => setHardConstraints({...hardConstraints, savingsDebt: e.target.value})}
+                    className="w-full p-3 border rounded-lg"
+                    placeholder="e.g., $10k savings, $5k debt"
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={hardConstraints.locationLocked}
+                      onChange={(e) => setHardConstraints({...hardConstraints, locationLocked: e.target.checked})}
+                      className="rounded"
+                    />
+                    <span className="text-sm font-medium">I must stay in my current location</span>
+                  </label>
+                  {hardConstraints.locationLocked && (
+                    <>
+                      <input
+                        type="text"
+                        value={hardConstraints.locationReason}
+                        onChange={(e) => setHardConstraints({...hardConstraints, locationReason: e.target.value})}
+                        className="w-full p-3 border rounded-lg mt-2"
+                        placeholder="Why? (e.g., kids' school, job, custody)"
+                      />
+                      <input
+                        type="text"
+                        value={hardConstraints.locationDuration}
+                        onChange={(e) => setHardConstraints({...hardConstraints, locationDuration: e.target.value})}
+                        className="w-full p-3 border rounded-lg mt-2"
+                        placeholder="For how long? (e.g., 2 years, indefinitely)"
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {wizardStep === 3 && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold mb-4">Life Vision</h2>
+                <p className="text-gray-600">What do you want out of life? Dream big!</p>
+                <textarea
+                  value={lifeGoals}
+                  onChange={(e) => setLifeGoals(e.target.value)}
+                  className="w-full p-3 border rounded-lg h-48"
+                  placeholder="Enter each goal on a new line...&#10;&#10;Examples:&#10;• Financial freedom by 45&#10;• Travel to 30 countries&#10;• Start my own business&#10;• Write a book"
+                />
+              </div>
+            )}
+            
+            {wizardStep === 4 && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold mb-4">Non-Negotiables</h2>
+                <p className="text-gray-600">What boundaries and values will you never compromise?</p>
+                <textarea
+                  value={nonNegotiables}
+                  onChange={(e) => setNonNegotiables(e.target.value)}
+                  className="w-full p-3 border rounded-lg h-48"
+                  placeholder="Enter each non-negotiable on a new line...&#10;&#10;Examples:&#10;• Time with family comes first&#10;• No work on weekends&#10;• Must maintain health&#10;• Ethical work only"
+                />
+              </div>
+            )}
+            
+            {wizardStep === 5 && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold mb-4">Current Situation</h2>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Work Status</label>
+                  <select
+                    value={currentSituation.workStatus}
+                    onChange={(e) => setCurrentSituation({...currentSituation, workStatus: e.target.value})}
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value="">Select...</option>
+                    <option value="employed">Employed</option>
+                    <option value="self-employed">Self-Employed</option>
+                    <option value="searching">Job Searching</option>
+                    <option value="student">Student</option>
+                    <option value="retired">Retired</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Health & Energy</label>
+                  <input
+                    type="text"
+                    value={currentSituation.healthConstraints}
+                    onChange={(e) => setCurrentSituation({...currentSituation, healthConstraints: e.target.value})}
+                    className="w-full p-3 border rounded-lg"
+                    placeholder="Any health conditions or energy limitations?"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Support System</label>
+                  <textarea
+                    value={currentSituation.supportSystem}
+                    onChange={(e) => setCurrentSituation({...currentSituation, supportSystem: e.target.value})}
+                    className="w-full p-3 border rounded-lg h-24"
+                    placeholder="Who can you lean on? (family, friends, mentors, etc.)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">What brought you here today?</label>
+                  <textarea
+                    value={currentSituation.triggerReason}
+                    onChange={(e) => setCurrentSituation({...currentSituation, triggerReason: e.target.value})}
+                    className="w-full p-3 border rounded-lg h-24"
+                    placeholder="What's the immediate reason or trigger?"
+                  />
+                </div>
+              </div>
+            )}
+            
+            {wizardStep === 6 && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold mb-4">Barriers</h2>
+                <p className="text-gray-600">What fears and obstacles are holding you back?</p>
+                <textarea
+                  value={fears}
+                  onChange={(e) => setFears(e.target.value)}
+                  className="w-full p-3 border rounded-lg h-48"
+                  placeholder="Enter each fear or thing you're avoiding on a new line...&#10;&#10;Examples:&#10;• Fear of failure&#10;• Confrontation with boss&#10;• Starting before I'm ready&#10;• What others will think"
+                />
+              </div>
+            )}
+            
+            {wizardStep === 7 && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold mb-4">Foundation</h2>
+                <p className="text-gray-600">What lessons have you learned and facts do you know to be true?</p>
+                <textarea
+                  value={lessons}
+                  onChange={(e) => setLessons(e.target.value)}
+                  className="w-full p-3 border rounded-lg h-48"
+                  placeholder="Enter each lesson or fact on a new line...&#10;&#10;Examples:&#10;• Hard work always pays off eventually&#10;• Health is wealth&#10;• Relationships matter more than money&#10;• I'm good at problem-solving"
+                />
+              </div>
+            )}
+            
+            {wizardStep === 8 && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold mb-4">Pending Decisions</h2>
+                <p className="text-gray-600">What decisions are you currently facing?</p>
+                <textarea
+                  value={decisions}
+                  onChange={(e) => setDecisions(e.target.value)}
+                  className="w-full p-3 border rounded-lg h-48"
+                  placeholder="Enter each decision on a new line...&#10;&#10;Examples:&#10;• Should I change careers?&#10;• Move to a new city?&#10;• Go back to school?&#10;• Start that side project?"
+                />
+              </div>
+            )}
+            
+            <button
+              onClick={handleWizardNext}
+              className="w-full mt-6 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2"
+            >
+              {wizardStep === 8 ? 'Complete Setup' : 'Continue'}
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
         </div>
-      )}
-
-      {/* Rest of main input screen - same as before but activeCategory set to 'lifeGoals' */}
-      <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white p-8 rounded-lg mb-8">
-        <h1 className="text-4xl font-bold mb-4">What Do You Want Out of This Life, {userProfile.name}?</h1>
-        <p className="text-xl opacity-90 mb-6">Build your vision, then talk to your advisors.</p>
       </div>
+    );
+  };
 
-      {/* Drawer and rest of UI continues as before... */}
-      <p className="text-gray-600 text-center py-12">Main input interface with tabs will appear here once you finish the wizard.</p>
-    </div>
-  );
+  const renderMainApp = () => {
+    const activeCategory = categories.find(c => c.id === activeCategory);
+    const items = activeCategory ? activeCategory.state.split('\n').filter(item => item.trim()) : [];
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex">
+        {/* Drawer for mobile */}
+        <div className={`fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden ${drawerOpen ? 'block' : 'hidden'}`} onClick={() => setDrawerOpen(false)} />
+        
+        <div className={`fixed left-0 top-0 h-full w-80 bg-white shadow-xl z-50 transform transition-transform lg:relative lg:transform-none ${drawerOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">Life Breakthrough</h2>
+              <button onClick={() => setShowProfile(true)} className="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold">
+                {userName ? userName[0].toUpperCase() : 'U'}
+              </button>
+            </div>
+            {!canTalkToAdvisors() && (
+              <p className="text-xs text-gray-500 mt-2">
+                Complete {3 - getCompletedCount()} more sections to unlock advisors
+              </p>
+            )}
+          </div>
+          
+          <div className="p-4 space-y-2">
+            {categories.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => handleCategorySelect(cat.id)}
+                className={`w-full text-left p-3 rounded-lg transition-all ${
+                  activeCategory === cat.id ? `bg-${cat.color}-50 border-${cat.color}-200 border` : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{cat.label}</span>
+                  <span className="text-sm text-gray-500">
+                    {cat.state.split('\n').filter(item => item.trim()).length}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+          
+          <div className="p-4 border-t">
+            <h3 className="text-sm font-medium text-gray-500 mb-3">AI Advisors</h3>
+            <div className="space-y-2">
+              {advisors.map(advisor => (
+                <button
+                  key={advisor.id}
+                  onClick={() => startAdvisorConversation(advisor.id)}
+                  disabled={!canTalkToAdvisors()}
+                  className={`w-full text-left p-3 rounded-lg transition-all ${
+                    canTalkToAdvisors() 
+                      ? 'hover:bg-gray-50 cursor-pointer' 
+                      : 'opacity-50 cursor-not-allowed'
+                  } ${currentAdvisor?.id === advisor.id ? 'ring-2 ring-indigo-500' : ''}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${advisor.gradient} flex items-center justify-center text-2xl`}>
+                      {advisor.emoji}
+                    </div>
+                    <div>
+                      <p className="font-medium">{advisor.name}</p>
+                      <p className="text-xs text-gray-500">{advisor.description}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <div className="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
+            <button 
+              onClick={() => setDrawerOpen(true)}
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <GripVertical className="h-5 w-5" />
+            </button>
+            
+            <h1 className="text-lg font-semibold">
+              {currentAdvisor ? `Talking with ${currentAdvisor.name}` : 
+               activeCategory ? categories.find(c => c.id === activeCategory)?.label : 'Select a category'}
+            </h1>
+            
+            <div className="text-sm text-gray-500">
+              {getTotalItems()} total items
+            </div>
+          </div>
+          
+          {/* Content Area */}
+          <div className="flex-1 overflow-auto">
+            {currentAdvisor ? (
+              <div className="flex flex-col h-full">
+                <div className="flex-1 overflow-auto p-4 space-y-4">
+                  {(advisorMessages[currentAdvisor.id] || []).map((msg, idx) => (
+                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-lg p-4 rounded-lg ${
+                        msg.role === 'user' 
+                          ? 'bg-indigo-600 text-white' 
+                          : 'bg-white shadow-md'
+                      }`}>
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))}
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-white shadow-md p-4 rounded-lg">
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="border-t p-4 bg-white">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                      className="flex-1 p-3 border rounded-lg"
+                      placeholder="Type your message..."
+                      disabled={isLoading}
+                    />
+                    <button 
+                      onClick={sendMessage}
+                      disabled={isLoading || !newMessage.trim()}
+                      className="bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      <Send className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4">
+                {activeCategory ? (
+                  <>
+                    <div className="mb-4">
+                      <textarea
+                        value={categories.find(c => c.id === activeCategory)?.state || ''}
+                        onChange={(e) => handleInputChange(e.target.value)}
+                        className="w-full h-32 p-3 border rounded-lg resize-none"
+                        placeholder="Add items, one per line..."
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {items.map((item, index) => (
+                        <div
+                          key={index}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, item, index)}
+                          onDragEnd={handleDragEnd}
+                          onDragOver={(e) => handleDragOver(e, index)}
+                          onDrop={(e) => handleDrop(e, index)}
+                          className={`p-3 bg-white rounded-lg shadow-sm flex items-center justify-between cursor-move ${
+                            dropTargetIndex === index ? 'ring-2 ring-indigo-500' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <GripVertical className="h-4 w-4 text-gray-400" />
+                            <span>{item}</span>
+                          </div>
+                          <button
+                            onClick={() => deleteItem(index)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <MessageCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>Select a category from the sidebar to start adding items</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (currentStep === 'setup') {
+    return renderWizardStep();
+  }
+  
+  return renderMainApp();
 };
 
 export default App;
