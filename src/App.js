@@ -18,8 +18,9 @@ const App = () => {
   const [hardConstraints, setHardConstraints] = useState({
     monthlyIncomeNeeded: '',
     currentMonthlyIncome: '',
-    savingsDebt: '',
-    locationLocked: false,
+    savings: '',
+    debt: '',
+    locationFlexibility: 'anywhere',
     locationReason: '',
     locationDuration: '',
     otherDeadlines: ''
@@ -406,6 +407,15 @@ const App = () => {
                   <p className="font-medium capitalize">{maritalStatus}</p>
                 </div>
                 <div>
+                  <p className="text-sm text-gray-500">Location Flexibility</p>
+                  <p className="font-medium">
+                    {hardConstraints.locationFlexibility === 'anywhere' && 'Can move anywhere'}
+                    {hardConstraints.locationFlexibility === 'within-hour' && 'Can move within 1 hour'}
+                    {hardConstraints.locationFlexibility === 'within-30min' && 'Can move within 30 min'}
+                    {hardConstraints.locationFlexibility === 'must-stay' && 'Must stay in current location'}
+                  </p>
+                </div>
+                <div>
                   <p className="text-sm text-gray-500">Completion</p>
                   <p className="font-medium">{Math.round((getCompletedCount() / 8) * 100)}%</p>
                 </div>
@@ -539,64 +549,111 @@ const App = () => {
             {wizardStep === 2 && (
               <div className="space-y-4">
                 <h2 className="text-xl font-bold mb-4">Hard Constraints</h2>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Monthly Income Needed</label>
-                  <input
-                    type="number"
-                    value={hardConstraints.monthlyIncomeNeeded}
-                    onChange={(e) => setHardConstraints({...hardConstraints, monthlyIncomeNeeded: e.target.value})}
-                    className="w-full p-3 border rounded-lg"
-                    placeholder="$ per month"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Current Monthly Income</label>
-                  <input
-                    type="number"
-                    value={hardConstraints.currentMonthlyIncome}
-                    onChange={(e) => setHardConstraints({...hardConstraints, currentMonthlyIncome: e.target.value})}
-                    className="w-full p-3 border rounded-lg"
-                    placeholder="$ per month"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Savings / Debt</label>
-                  <input
-                    type="text"
-                    value={hardConstraints.savingsDebt}
-                    onChange={(e) => setHardConstraints({...hardConstraints, savingsDebt: e.target.value})}
-                    className="w-full p-3 border rounded-lg"
-                    placeholder="e.g., $10k savings, $5k debt"
-                  />
-                </div>
-                <div>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={hardConstraints.locationLocked}
-                      onChange={(e) => setHardConstraints({...hardConstraints, locationLocked: e.target.checked})}
-                      className="rounded"
-                    />
-                    <span className="text-sm font-medium">I must stay in my current location</span>
-                  </label>
-                  {hardConstraints.locationLocked && (
-                    <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Monthly Income Needed</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-3 text-gray-500">$</span>
                       <input
-                        type="text"
-                        value={hardConstraints.locationReason}
-                        onChange={(e) => setHardConstraints({...hardConstraints, locationReason: e.target.value})}
-                        className="w-full p-3 border rounded-lg mt-2"
-                        placeholder="Why? (e.g., kids' school, job, custody)"
+                        type="number"
+                        value={hardConstraints.monthlyIncomeNeeded}
+                        onChange={(e) => setHardConstraints({...hardConstraints, monthlyIncomeNeeded: e.target.value})}
+                        className="w-full pl-8 pr-3 py-3 border rounded-lg"
+                        placeholder="0"
                       />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Current Monthly Income</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-3 text-gray-500">$</span>
                       <input
-                        type="text"
-                        value={hardConstraints.locationDuration}
-                        onChange={(e) => setHardConstraints({...hardConstraints, locationDuration: e.target.value})}
-                        className="w-full p-3 border rounded-lg mt-2"
-                        placeholder="For how long? (e.g., 2 years, indefinitely)"
+                        type="number"
+                        value={hardConstraints.currentMonthlyIncome}
+                        onChange={(e) => setHardConstraints({...hardConstraints, currentMonthlyIncome: e.target.value})}
+                        className="w-full pl-8 pr-3 py-3 border rounded-lg"
+                        placeholder="0"
                       />
-                    </>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Current Savings</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-3 text-gray-500">$</span>
+                      <input
+                        type="number"
+                        value={hardConstraints.savings}
+                        onChange={(e) => setHardConstraints({...hardConstraints, savings: e.target.value})}
+                        className="w-full pl-8 pr-3 py-3 border rounded-lg"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Total Debt</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-3 text-gray-500">$</span>
+                      <input
+                        type="number"
+                        value={hardConstraints.debt}
+                        onChange={(e) => setHardConstraints({...hardConstraints, debt: e.target.value})}
+                        className="w-full pl-8 pr-3 py-3 border rounded-lg"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Location Flexibility</label>
+                  <select
+                    value={hardConstraints.locationFlexibility}
+                    onChange={(e) => setHardConstraints({...hardConstraints, locationFlexibility: e.target.value})}
+                    className="w-full p-3 border rounded-lg"
+                  >
+                    <option value="anywhere">I can move anywhere</option>
+                    <option value="within-hour">I can move up to 1 hour away</option>
+                    <option value="within-30min">I can move up to 30 minutes away</option>
+                    <option value="must-stay">I must stay in my current location</option>
+                  </select>
+                  
+                  {hardConstraints.locationFlexibility !== 'anywhere' && (
+                    <div className="mt-3 space-y-3 p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Why this constraint?</label>
+                        <input
+                          type="text"
+                          value={hardConstraints.locationReason}
+                          onChange={(e) => setHardConstraints({...hardConstraints, locationReason: e.target.value})}
+                          className="w-full p-2 border rounded"
+                          placeholder="e.g., kids' school, elderly parents, shared custody"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">For how long?</label>
+                        <input
+                          type="text"
+                          value={hardConstraints.locationDuration}
+                          onChange={(e) => setHardConstraints({...hardConstraints, locationDuration: e.target.value})}
+                          className="w-full p-2 border rounded"
+                          placeholder="e.g., 2 years, until kids graduate, indefinitely"
+                        />
+                      </div>
+                    </div>
                   )}
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Other Time Constraints (optional)</label>
+                  <textarea
+                    value={hardConstraints.otherDeadlines}
+                    onChange={(e) => setHardConstraints({...hardConstraints, otherDeadlines: e.target.value})}
+                    className="w-full p-3 border rounded-lg h-20"
+                    placeholder="Any other deadlines or time-sensitive constraints?"
+                  />
                 </div>
               </div>
             )}
