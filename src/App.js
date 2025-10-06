@@ -78,6 +78,14 @@ const App = () => {
 
   const advisors = [
     { 
+      id: 'supervisor',
+      name: 'Lead Advisor',
+      description: 'Your strategic life coordinator',
+      emoji: '🎯',
+      gradient: 'from-indigo-500 to-purple-500',
+      isDefault: true
+    },
+    { 
       id: 'therapist',
       name: 'Therapist',
       description: 'For emotional support and clarity',
@@ -88,7 +96,7 @@ const App = () => {
       id: 'coach',
       name: 'Life Coach', 
       description: 'For motivation and goal-setting',
-      emoji: '🎯',
+      emoji: '💪',
       gradient: 'from-blue-500 to-cyan-500'
     },
     {
@@ -106,6 +114,49 @@ const App = () => {
       gradient: 'from-orange-500 to-red-500'
     }
   ];
+
+  const advisorModes = [
+    { 
+      id: 'balanced', 
+      name: 'Balanced Perspective', 
+      description: 'Equal blend of all advisors',
+      weights: { therapist: 25, coach: 25, financial: 25, strategist: 25 }
+    },
+    { 
+      id: 'tough-love', 
+      name: 'Tough Love', 
+      description: 'Direct coaching with strategic focus',
+      weights: { therapist: 10, coach: 50, financial: 10, strategist: 30 }
+    },
+    { 
+      id: 'gentle-support', 
+      name: 'Gentle Support', 
+      description: 'Emotional support with encouragement',
+      weights: { therapist: 50, coach: 30, financial: 10, strategist: 10 }
+    },
+    { 
+      id: 'practical', 
+      name: 'Practical Focus', 
+      description: 'Financial and strategic planning',
+      weights: { therapist: 10, coach: 10, financial: 40, strategist: 40 }
+    },
+    { 
+      id: 'custom', 
+      name: 'Custom Blend', 
+      description: 'Adjust the mix yourself',
+      weights: { therapist: 25, coach: 25, financial: 25, strategist: 25 }
+    }
+  ];
+
+  // Add new state for advisor mode
+  const [selectedMode, setSelectedMode] = useState('balanced');
+  const [customWeights, setCustomWeights] = useState({ 
+    therapist: 25, 
+    coach: 25, 
+    financial: 25, 
+    strategist: 25 
+  });
+  const [showModeSelector, setShowModeSelector] = useState(false);
 
   useEffect(() => {
     const storedData = localStorage.getItem(`userData_${userName}`);
@@ -328,23 +379,32 @@ const App = () => {
     setIsLoading(true);
     
     try {
+      const contextData = {
+        messages: [...(advisorMessages[currentAdvisor.id] || []), userMessage],
+        advisorType: currentAdvisor.id,
+        context: {
+          lifeGoals,
+          nonNegotiables,
+          fears,
+          lessons,
+          decisions,
+          hardConstraints,
+          currentSituation,
+          userName
+        }
+      };
+      
+      // Add mode and weights for supervisor
+      if (currentAdvisor.id === 'supervisor') {
+        const mode = advisorModes.find(m => m.id === selectedMode);
+        contextData.advisorMode = selectedMode;
+        contextData.advisorWeights = selectedMode === 'custom' ? customWeights : mode.weights;
+      }
+      
       const response = await fetch('/.netlify/functions/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...(advisorMessages[currentAdvisor.id] || []), userMessage],
-          advisorType: currentAdvisor.id,
-          context: {
-            lifeGoals,
-            nonNegotiables,
-            fears,
-            lessons,
-            decisions,
-            hardConstraints,
-            currentSituation,
-            userName
-          }
-        })
+        body: JSON.stringify(contextData)
       });
       
       const data = await response.json();
@@ -832,7 +892,35 @@ const App = () => {
           <div className="p-4 border-t">
             <h3 className="text-sm font-medium text-gray-500 mb-3">AI Advisors</h3>
             <div className="space-y-2">
-              {advisors.map(advisor => (
+              {/* Lead Advisor - Always available first */}
+              {advisors.filter(a => a.isDefault).map(advisor => (
+                <button
+                  key={advisor.id}
+                  onClick={() => startAdvisorConversation(advisor.id)}
+                  disabled={!canTalkToAdvisors()}
+                  className={`w-full text-left p-3 rounded-lg transition-all ${
+                    canTalkToAdvisors() 
+                      ? 'hover:bg-gray-50 cursor-pointer ring-2 ring-indigo-200' 
+                      : 'opacity-50 cursor-not-allowed'
+                  } ${currentAdvisor?.id === advisor.id ? 'ring-2 ring-indigo-500 bg-indigo-50' : ''}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${advisor.gradient} flex items-center justify-center text-2xl`}>
+                      {advisor.emoji}
+                    </div>
+                    <div>
+                      <p className="font-medium">{advisor.name}</p>
+                      <p className="text-xs text-gray-500">{advisor.description}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+              
+              {/* Divider */}
+              <div className="text-xs text-gray-400 uppercase tracking-wider mt-4 mb-2">Specialist Advisors</div>
+              
+              {/* Specialist Advisors */}
+              {advisors.filter(a => !a.isDefault).map(advisor => (
                 <button
                   key={advisor.id}
                   onClick={() => startAdvisorConversation(advisor.id)}
@@ -883,6 +971,86 @@ const App = () => {
           <div className="flex-1 overflow-auto">
             {currentAdvisor ? (
               <div className="flex flex-col h-full">
+                {/* Mode Selector for Supervisor */}
+                {currentAdvisor.id === 'supervisor' && (
+                  <div className="bg-white border-b px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm text-gray-500">Advisor Mode: </span>
+                        <button
+                          onClick={() => setShowModeSelector(!showModeSelector)}
+                          className="font-medium text-indigo-600 hover:text-indigo-700"
+                        >
+                          {advisorModes.find(m => m.id === selectedMode)?.name} ▼
+                        </button>
+                      </div>
+                      {selectedMode === 'custom' && (
+                        <button
+                          onClick={() => setShowModeSelector(true)}
+                          className="text-sm text-indigo-600 hover:text-indigo-700"
+                        >
+                          Adjust Mix
+                        </button>
+                      )}
+                    </div>
+                    
+                    {showModeSelector && (
+                      <div className="absolute z-50 mt-2 bg-white rounded-lg shadow-xl border p-4 max-w-md">
+                        <div className="space-y-3">
+                          {advisorModes.map(mode => (
+                            <button
+                              key={mode.id}
+                              onClick={() => {
+                                setSelectedMode(mode.id);
+                                if (mode.id !== 'custom') {
+                                  setShowModeSelector(false);
+                                }
+                              }}
+                              className={`w-full text-left p-3 rounded-lg transition-all ${
+                                selectedMode === mode.id ? 'bg-indigo-50 border-indigo-200 border' : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="font-medium">{mode.name}</div>
+                              <div className="text-sm text-gray-500">{mode.description}</div>
+                            </button>
+                          ))}
+                        </div>
+                        
+                        {selectedMode === 'custom' && (
+                          <div className="mt-4 pt-4 border-t space-y-3">
+                            <div className="text-sm font-medium">Adjust Your Blend:</div>
+                            {Object.entries(customWeights).map(([advisor, weight]) => (
+                              <div key={advisor} className="flex items-center justify-between">
+                                <span className="text-sm capitalize">{advisor}:</span>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={weight}
+                                    onChange={(e) => {
+                                      const newWeight = parseInt(e.target.value);
+                                      setCustomWeights(prev => ({...prev, [advisor]: newWeight}));
+                                    }}
+                                    className="w-32"
+                                  />
+                                  <span className="text-sm w-10 text-right">{weight}%</span>
+                                </div>
+                              </div>
+                            ))}
+                            <button
+                              onClick={() => setShowModeSelector(false)}
+                              className="w-full mt-3 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700"
+                            >
+                              Apply Custom Blend
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <div className="flex-1 overflow-auto p-4 space-y-4">
                   {(advisorMessages[currentAdvisor.id] || []).map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
