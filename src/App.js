@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GripVertical, Trash2, MessageCircle, ArrowLeft, Send, ChevronRight, CheckCircle, Circle, X } from 'lucide-react';
+import { GripVertical, Trash2, MessageCircle, ArrowLeft, Send, ChevronRight, CheckCircle, Circle, X, ChevronDown, ChevronUp, Edit2, AlertCircle } from 'lucide-react';
 
 const App = () => {
   const [currentStep, setCurrentStep] = useState('setup');
@@ -7,6 +7,8 @@ const App = () => {
   const [skipToExplore, setSkipToExplore] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showDiscoveryHelper, setShowDiscoveryHelper] = useState(false);
+  const [showAssessment, setShowAssessment] = useState(false);
+  const [showContext, setShowContext] = useState(true);
   
   // User data
   const [userName, setUserName] = useState('');
@@ -168,6 +170,160 @@ const App = () => {
     }
   ];
 
+  // Assessment Component
+  const AssessmentScreen = () => {
+    const getQualityScore = () => {
+      let score = 0;
+      let maxScore = 8;
+      
+      // Check completeness of each section
+      if (lifeGoals.length > 100) score++;
+      if (nonNegotiables.length > 50) score++;
+      if (fears.length > 50) score++;
+      if (lessons.length > 50) score++;
+      if (decisions.length > 30) score++;
+      if (hardConstraints.monthlyIncomeNeeded) score++;
+      if (currentSituation.triggerReason?.length > 30) score++;
+      if (currentSituation.workStatus) score++;
+      
+      return { score, maxScore, percentage: Math.round((score / maxScore) * 100) };
+    };
+    
+    const { score, maxScore, percentage } = getQualityScore();
+    
+    const missingAreas = [];
+    if (!lifeGoals || lifeGoals.length < 50) missingAreas.push("Your life goals need more detail");
+    if (!fears || fears.length < 30) missingAreas.push("Share more about what's holding you back");
+    if (!currentSituation.triggerReason) missingAreas.push("Tell us what brought you here today");
+    if (!hardConstraints.monthlyIncomeNeeded) missingAreas.push("Specify your financial needs");
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <h2 className="text-2xl font-bold mb-6">Your Life Breakthrough Assessment</h2>
+            
+            {/* Quality Score */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-lg font-medium">Information Quality</span>
+                <span className="text-2xl font-bold text-indigo-600">{percentage}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div 
+                  className="bg-indigo-600 h-3 rounded-full transition-all"
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+              <p className="text-sm text-gray-600 mt-2">
+                {percentage >= 80 ? "Excellent foundation for breakthrough work!" :
+                 percentage >= 60 ? "Good start, but more detail will help advisors guide you better." :
+                 "We need more information to provide effective guidance."}
+              </p>
+            </div>
+            
+            {/* Summary of What We Know */}
+            <div className="mb-6">
+              <h3 className="font-semibold mb-3">What we understand about you:</h3>
+              <div className="space-y-2 text-sm">
+                {hardConstraints.monthlyIncomeNeeded && hardConstraints.currentMonthlyIncome && (
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
+                    <span>Income gap: ${parseInt(hardConstraints.monthlyIncomeNeeded) - parseInt(hardConstraints.currentMonthlyIncome)}/month to close</span>
+                  </div>
+                )}
+                {lifeGoals && (
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
+                    <span>{lifeGoals.split('\n').filter(g => g.trim()).length} life goals identified</span>
+                  </div>
+                )}
+                {fears && (
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
+                    <span>{fears.split('\n').filter(f => f.trim()).length} fears/barriers acknowledged</span>
+                  </div>
+                )}
+                {decisions && (
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
+                    <span>{decisions.split('\n').filter(d => d.trim()).length} pending decisions to resolve</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Areas Needing Attention */}
+            {missingAreas.length > 0 && (
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <h3 className="font-semibold mb-2 flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                  To maximize your breakthrough:
+                </h3>
+                <ul className="space-y-1 text-sm text-amber-800">
+                  {missingAreas.map((area, idx) => (
+                    <li key={idx}>• {area}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {/* Key Questions */}
+            <div className="mb-6">
+              <h3 className="font-semibold mb-3">Quick clarifying questions:</h3>
+              <div className="space-y-3">
+                {!currentSituation.triggerReason && (
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm font-medium mb-1">What specific event or realization brought you here today?</p>
+                    <input 
+                      type="text"
+                      className="w-full p-2 border rounded"
+                      placeholder="e.g., Got passed over for promotion, relationship ended..."
+                      onChange={(e) => setCurrentSituation({...currentSituation, triggerReason: e.target.value})}
+                    />
+                  </div>
+                )}
+                {lifeGoals.split('\n').filter(g => g.trim()).length < 3 && (
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm font-medium mb-1">If you achieved everything, what would life look like in 5 years?</p>
+                    <textarea 
+                      className="w-full p-2 border rounded h-20"
+                      placeholder="Describe your ideal day..."
+                      onChange={(e) => setLifeGoals(lifeGoals + '\n' + e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowAssessment(false);
+                  setCurrentStep('main');
+                }}
+                className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700"
+              >
+                Start with Lead Advisor
+              </button>
+              <button
+                onClick={() => {
+                  setShowAssessment(false);
+                  setWizardStep(1);
+                  setCurrentStep('setup');
+                }}
+                className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Refine Inputs
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Discovery Helper Component
   const DiscoveryHelper = () => {
     const quickPrompts = [
@@ -266,7 +422,6 @@ const App = () => {
           </div>
           
           <div className="p-6 space-y-6">
-            {/* Quick Prompts Section */}
             <div>
               <h3 className="font-medium mb-3">Quick Starts - Click any that resonate:</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -285,14 +440,12 @@ const App = () => {
               </div>
             </div>
 
-            {/* Divider */}
             <div className="flex items-center gap-4">
               <div className="flex-1 h-px bg-gray-200" />
               <span className="text-sm text-gray-500 font-medium">OR EXPLORE DEEPER</span>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
 
-            {/* Deep Questions Section */}
             <div>
               <h3 className="font-medium mb-3">Answer these questions to uncover hidden desires:</h3>
               <div className="space-y-4">
@@ -318,7 +471,6 @@ const App = () => {
               </button>
             </div>
 
-            {/* Tips Section */}
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="font-medium mb-2 text-sm">💡 Tips for discovering what you want:</h4>
               <ul className="text-sm text-gray-600 space-y-1">
@@ -331,6 +483,68 @@ const App = () => {
             </div>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  // Context Panel for advisor chats
+  const ContextPanel = () => {
+    const getRelevantContext = () => {
+      const context = {
+        goals: lifeGoals.split('\n').filter(g => g.trim()).slice(0, 3),
+        fears: fears.split('\n').filter(f => f.trim()).slice(0, 3),
+        decisions: decisions.split('\n').filter(d => d.trim()).slice(0, 2)
+      };
+      return context;
+    };
+    
+    const context = getRelevantContext();
+    
+    return (
+      <div className="bg-blue-50 border-b border-blue-100 px-4 py-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-blue-900">Your Context</span>
+          <button 
+            onClick={() => setShowContext(!showContext)}
+            className="text-blue-600 hover:text-blue-700"
+          >
+            {showContext ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+        </div>
+        {showContext && (
+          <div className="space-y-2 text-xs">
+            {context.goals.length > 0 && (
+              <div>
+                <span className="font-medium text-blue-800">Key Goals:</span>
+                <ul className="mt-1 space-y-0.5">
+                  {context.goals.map((goal, idx) => (
+                    <li key={idx} className="text-blue-700">• {goal}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {context.fears.length > 0 && (
+              <div>
+                <span className="font-medium text-blue-800">Main Fears:</span>
+                <ul className="mt-1 space-y-0.5">
+                  {context.fears.map((fear, idx) => (
+                    <li key={idx} className="text-blue-700">• {fear}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {context.decisions.length > 0 && (
+              <div>
+                <span className="font-medium text-blue-800">Pending:</span>
+                <ul className="mt-1 space-y-0.5">
+                  {context.decisions.map((decision, idx) => (
+                    <li key={idx} className="text-blue-700">• {decision}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -420,7 +634,8 @@ const App = () => {
         if (decisions) {
           setCompletedSections(prev => ({ ...prev, decisions: true }));
           sectionComplete = true;
-          setCurrentStep('main');
+          setShowAssessment(true);
+          setCurrentStep('assessment');
           return;
         }
         break;
@@ -430,7 +645,8 @@ const App = () => {
     
     if (sectionComplete) {
       if (wizardStep === 8) {
-        setCurrentStep('main');
+        setShowAssessment(true);
+        setCurrentStep('assessment');
       } else {
         setWizardStep(wizardStep + 1);
       }
@@ -439,7 +655,8 @@ const App = () => {
 
   const handleSkipToExplore = () => {
     setSkipToExplore(true);
-    setCurrentStep('main');
+    setShowAssessment(true);
+    setCurrentStep('assessment');
   };
 
   const getCompletedCount = () => {
@@ -452,6 +669,7 @@ const App = () => {
 
   const handleCategorySelect = (categoryId) => {
     setActiveCategory(categoryId);
+    setCurrentAdvisor(null);
     if (window.innerWidth < 768) {
       setDrawerOpen(false);
     }
@@ -1096,7 +1314,7 @@ Where would you like to start? Or would you prefer I suggest a path forward?${cl
     const items = activeCategoryData ? activeCategoryData.state.split('\n').filter(item => item.trim()) : [];
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex h-screen overflow-hidden">
         {/* Drawer for mobile */}
         <div className={`fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden ${drawerOpen ? 'block' : 'hidden'}`} onClick={() => setDrawerOpen(false)} />
         
@@ -1120,16 +1338,19 @@ Where would you like to start? Or would you prefer I suggest a path forward?${cl
               <button
                 key={cat.id}
                 onClick={() => handleCategorySelect(cat.id)}
-                className={`w-full text-left p-3 rounded-lg transition-all ${
-                  activeCategory === cat.id ? `bg-${cat.color}-50 border-${cat.color}-200 border` : 'hover:bg-gray-50'
+                className={`w-full text-left p-3 rounded-lg transition-all flex items-center justify-between ${
+                  activeCategory === cat.id && !currentAdvisor ? `bg-${cat.color}-50 border-${cat.color}-200 border` : 'hover:bg-gray-50'
                 }`}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <span className="font-medium">{cat.label}</span>
                   <span className="text-sm text-gray-500">
-                    {cat.state.split('\n').filter(item => item.trim()).length}
+                    ({cat.state.split('\n').filter(item => item.trim()).length})
                   </span>
                 </div>
+                {currentAdvisor && (
+                  <Edit2 className="h-4 w-4 text-gray-400" />
+                )}
               </button>
             ))}
           </div>
@@ -1192,7 +1413,7 @@ Where would you like to start? Or would you prefer I suggest a path forward?${cl
         </div>
         
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col h-screen">
           {/* Header */}
           <div className="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
             <button 
@@ -1213,9 +1434,9 @@ Where would you like to start? Or would you prefer I suggest a path forward?${cl
           </div>
           
           {/* Content Area */}
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-hidden flex flex-col">
             {currentAdvisor ? (
-              <div className="flex flex-col h-full">
+              <>
                 {/* Mode Selector for Supervisor */}
                 {currentAdvisor.id === 'supervisor' && (
                   <div className="bg-white border-b px-4 py-3">
@@ -1296,7 +1517,11 @@ Where would you like to start? Or would you prefer I suggest a path forward?${cl
                   </div>
                 )}
                 
-                <div className="flex-1 overflow-auto p-4 space-y-4">
+                {/* Context Panel */}
+                <ContextPanel />
+                
+                {/* Chat Messages */}
+                <div className="flex-1 overflow-auto p-4 space-y-4 pb-20">
                   {(advisorMessages[currentAdvisor.id] || []).map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-lg p-4 rounded-lg ${
@@ -1321,8 +1546,9 @@ Where would you like to start? Or would you prefer I suggest a path forward?${cl
                   )}
                 </div>
                 
-                <div className="border-t p-4 bg-white">
-                  <div className="flex gap-2">
+                {/* Fixed Input Area */}
+                <div className="fixed bottom-0 left-0 right-0 lg:left-80 bg-white border-t p-4">
+                  <div className="flex gap-2 max-w-4xl mx-auto">
                     <input
                       type="text"
                       value={newMessage}
@@ -1341,9 +1567,9 @@ Where would you like to start? Or would you prefer I suggest a path forward?${cl
                     </button>
                   </div>
                 </div>
-              </div>
+              </>
             ) : (
-              <div className="p-4">
+              <div className="flex-1 overflow-auto p-4">
                 {activeCategoryData ? (
                   <>
                     <div className="mb-4">
@@ -1396,6 +1622,10 @@ Where would you like to start? Or would you prefer I suggest a path forward?${cl
     );
   };
 
+  if (currentStep === 'assessment') {
+    return <AssessmentScreen />;
+  }
+  
   if (currentStep === 'setup') {
     return renderWizardStep();
   }
