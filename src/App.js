@@ -7,7 +7,6 @@ const App = () => {
   const [skipToExplore, setSkipToExplore] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showDiscoveryHelper, setShowDiscoveryHelper] = useState(false);
-  const [showAssessment, setShowAssessment] = useState(false);
   const [showContext, setShowContext] = useState(true);
   
   // User data
@@ -189,7 +188,7 @@ const App = () => {
       return { score, maxScore, percentage: Math.round((score / maxScore) * 100) };
     };
     
-    const { score, maxScore, percentage } = getQualityScore();
+    const { percentage } = getQualityScore();
     
     const missingAreas = [];
     if (!lifeGoals || lifeGoals.length < 50) missingAreas.push("Your life goals need more detail");
@@ -634,7 +633,6 @@ const App = () => {
         if (decisions) {
           setCompletedSections(prev => ({ ...prev, decisions: true }));
           sectionComplete = true;
-          setShowAssessment(true);
           setCurrentStep('assessment');
           return;
         }
@@ -645,7 +643,6 @@ const App = () => {
     
     if (sectionComplete) {
       if (wizardStep === 8) {
-        setShowAssessment(true);
         setCurrentStep('assessment');
       } else {
         setWizardStep(wizardStep + 1);
@@ -655,7 +652,6 @@ const App = () => {
 
   const handleSkipToExplore = () => {
     setSkipToExplore(true);
-    setShowAssessment(true);
     setCurrentStep('assessment');
   };
 
