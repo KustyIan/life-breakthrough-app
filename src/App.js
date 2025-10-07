@@ -299,7 +299,6 @@ const App = () => {
             <div className="flex gap-3">
               <button
                 onClick={() => {
-                  setShowAssessment(false);
                   setCurrentStep('main');
                 }}
                 className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700"
@@ -308,7 +307,6 @@ const App = () => {
               </button>
               <button
                 onClick={() => {
-                  setShowAssessment(false);
                   setWizardStep(1);
                   setCurrentStep('setup');
                 }}
