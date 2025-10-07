@@ -744,19 +744,38 @@ const App = () => {
         const clarityMessage = !hasClarity ? 
           `\n\nI notice you might still be exploring what you want from life. This is actually the most important work we can do together. Would you like me to help you discover your true desires? Just say "Help me get clear on what I want."` : '';
         
+        // Calculate key metrics for immediate value
+        const incomeGap = hardConstraints.monthlyIncomeNeeded && hardConstraints.currentMonthlyIncome ? 
+          parseInt(hardConstraints.monthlyIncomeNeeded) - parseInt(hardConstraints.currentMonthlyIncome) : 0;
+        const fearCount = fears.split('\n').filter(f => f.trim()).length;
+        const decisionCount = decisions.split('\n').filter(d => d.trim()).length;
+        
         initialMessage = {
           role: 'assistant',
-          content: `Hello ${userName || 'there'}! I'm your Lead Advisor, here to coordinate your life breakthrough journey. I've reviewed everything you've shared - your goals, constraints, fears, and current situation. 
-          
-I'm currently in "${mode.name}" mode, which means ${mode.description.toLowerCase()}. You can change this anytime by clicking the mode selector above.
+          content: `Welcome ${userName || 'there'}! I'm your Lead Advisor, and I'm here to help you create your life breakthrough. 
 
-Based on what you've shared, I see a few key areas we should focus on:
-${hardConstraints.monthlyIncomeNeeded && hardConstraints.currentMonthlyIncome && parseInt(hardConstraints.monthlyIncomeNeeded) > parseInt(hardConstraints.currentMonthlyIncome) ? `• There's a gap between your income needs ($${hardConstraints.monthlyIncomeNeeded}) and current income ($${hardConstraints.currentMonthlyIncome})` : ''}
-${fears ? `• You're dealing with some significant fears that are holding you back` : ''}
-${decisions ? `• You have important decisions pending that need clarity` : ''}
-${lifeGoals ? `• You have ambitious life goals that need a strategic plan` : ''}
+**Here's what I see from your assessment:**
 
-Where would you like to start? Or would you prefer I suggest a path forward?${clarityMessage}`
+${incomeGap > 0 ? `📊 **Financial Gap:** You need to increase your income by ${incomeGap}/month to reach your target of ${hardConstraints.monthlyIncomeNeeded}/month.` : ''}
+
+${fearCount > 0 ? `🎯 **Key Barriers:** You've identified ${fearCount} fears holding you back. The top one seems to be "${fears.split('\n')[0]}".` : ''}
+
+${decisionCount > 0 ? `⚡ **Pending Decisions:** You have ${decisionCount} important decisions to make, starting with "${decisions.split('\n')[0]}".` : ''}
+
+**Your first breakthrough opportunity:**
+Based on everything you've shared, I recommend we start by ${
+  incomeGap > 1000 ? 'creating a financial action plan to close your income gap' :
+  fearCount > 3 ? 'addressing the fears that are keeping you stuck' :
+  !hasClarity ? 'getting crystal clear on what you truly want' :
+  'turning your life goals into an actionable 90-day plan'
+}.
+
+**Here's what you can do right now:**
+1. 💬 **Continue this conversation** - I'll guide you through your specific situation
+2. 📝 **Review your inputs** - Click any category on the left to view or edit
+3. 👥 **Talk to specialists** - Once we identify your focus area, I'll connect you with the right advisor
+
+What feels most urgent to you right now? Type your response below, or tell me where you'd like to start.`
         };
       } else {
         initialMessage = {
@@ -779,7 +798,8 @@ Where would you like to start? Or would you prefer I suggest a path forward?${cl
 
   // Auto-start supervisor conversation when advisors unlock
   useEffect(() => {
-    if (currentStep === 'main' && canTalkToAdvisors() && !currentAdvisor && !Object.keys(advisorMessages).length) {
+    if (currentStep === 'main' && canTalkToAdvisors() && !currentAdvisor) {
+      // Always start with Lead Advisor when entering main app
       startAdvisorConversation('supervisor');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
